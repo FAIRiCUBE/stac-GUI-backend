@@ -1,0 +1,2 @@
+# pygeometa
+-e git+https://github.com/geopython/pygeometa/#egg=pygeometa
