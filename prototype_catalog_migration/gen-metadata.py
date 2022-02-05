@@ -2,16 +2,16 @@
 # -*- coding: UTF-8 -*-
 
 import ast
+from copy import deepcopy
 import csv
+from datetime import datetime
 import io
 import os
 import sys
 import shutil
+from urllib.parse import urlparse
 
-from copy import deepcopy
-from datetime import datetime
-
-from pygeometa.schemas.iso19139 import ISO19139OutputSchema
+from pygeometa.schemas.iso19139_2 import ISO19139_2OutputSchema
 
 LANGUAGE = 'eng'
 
@@ -31,6 +31,7 @@ mcf_template = {
     'identification': {
         'charset': 'utf8',
         'language': 'missing',
+        'dates': {},
         'keywords': {},
         'status': 'onGoing',
         'maintenancefrequency': 'continual'
@@ -40,10 +41,16 @@ mcf_template = {
         'dimensions': []
     },
     'contact': {
-      'pointOfContact': {},
-      'distributor': {}
+        'pointOfContact': {},
+        'distributor': {}
     },
     'distribution': {}
+}
+
+statuses = {
+    'COMPLETED': 'completed',
+    'ONGOING': 'onGoing',
+    'Planned': 'planned',
 }
 
 
@@ -56,16 +63,31 @@ def generate_metadata(rec):
     mcf['metadata']['datestamp'] = now
     mcf['identification']['title'] = rec['Product']
     mcf['identification']['abstract'] = rec['Description']
+    mcf['identification']['status'] = statuses[rec['Status']]
 
     mcf['identification']['keywords']['default'] = {
-        'keywords': ['dataset'],
+        'keywords': rec['Variable'],
+        'keywords_type': 'theme'
+    }
+    mcf['identification']['keywords']['theme1'] = {
+        'keywords': rec['Theme1'],
         'keywords_type': 'theme'
     }
 
-    mcf['identification']['dates'] = {
-        'creation': now
-    }
+    if rec['DOI']:
+        doi_url = urlparse(rec['DOI'])
+        mcf['identification']['doi'] = doi_url.path.lstrip('/')
 
+    if row['Region']:
+        mcf['identification']['keywords']['region'] = {
+            'keywords': rec['Region'],
+            'keywords_type': 'theme'
+        }
+
+    if row['Released'] not in [None, 'Planned']:
+        mcf['identification']['dates'] = {
+            'publication': row['Released']
+        }
 
     try:
         polygon = ast.literal_eval(rec['Polygon'])
@@ -75,10 +97,8 @@ def generate_metadata(rec):
             polygon[0][2][0],
             polygon[0][2][1],
         ]
-    except SyntaxError:
+    except (SyntaxError, TypeError):
         bbox = [-180, -90, 180, 90]
-
-    print(bbox)
 
     mcf['identification']['extents'] = {
         'spatial': [{
@@ -91,8 +111,35 @@ def generate_metadata(rec):
         }]
     }
 
+    mcf['acquisition'] = {
+        'platforms': [{
+            'identifier': row['EO_Missions']
+        }]
+    }
 
-    iso_os = ISO19139OutputSchema()
+    mcf['distribution'] = {
+        'website': {
+            'url': row['Website'],
+            'type': 'WWW:LINK',
+            'name': 'website',
+            'description': 'website',
+            'function': 'information'
+        }
+    }
+
+    if row['Access']:
+        mcf['distribution']['access'] = {
+            'url': row['Access'],
+            'type': 'WWW:LINK',
+            'name': 'access',
+            'description': 'access',
+            'function': 'download'
+        }
+
+    if row['Documentation']:
+        mcf['identification']['url'] = row['Documentation']
+
+    iso_os = ISO19139_2OutputSchema()
     return iso_os.write(mcf)
 
 
