@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gmx:CT_CodelistCatalogue xmlns:gmd="http://www.isotc211.org/2005/gmd" xmlns:gmx="http://www.isotc211.org/2005/gmx" xmlns:gco="http://www.isotc211.org/2005/gco" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.isotc211.org/2005/gmd http://wis.wmo.int/2011/schemata/iso19139_2007/schema/gmd/gmd.xsd http://www.isotc211.org/2005/gmx http://wis.wmo.int/2011/schemata/iso19139_2007/schema/gmx/gmx.xsd">
+    <gmx:name>
+        <gco:CharacterString>OSC_Codelists</gco:CharacterString>
+    </gmx:name>
+    <gmx:scope>
+        <gco:CharacterString>Codelists for Open Science Catalog</gco:CharacterString>
+    </gmx:scope>
+    <gmx:fieldOfApplication>
+        <gco:CharacterString>Open Science Catalog</gco:CharacterString>
+    </gmx:fieldOfApplication>
+    <gmx:versionNumber>
+        <gco:CharacterString>1.0.0</gco:CharacterString>
+    </gmx:versionNumber>
+    <gmx:versionDate>
+        <gco:Date>2022-02-05</gco:Date>
+    </gmx:versionDate>
+    <gmx:language>
+        <gmd:LanguageCode codeList="#LanguageCode" codeListValue="eng">English</gmd:LanguageCode>
+    </gmx:language>
+    <gmx:characterSet>
+        <gmd:MD_CharacterSetCode codeList="#MD_CharacterSetCode" codeListValue="utf8">utf8</gmd:MD_CharacterSetCode>
+    </gmx:characterSet>
+
+    {% for key, value in codelists.items() %}
+    <gmx:codelistItem>
+        <gmx:CodeListDictionary gml:id="OSC_{{ value['identifier'] }}">
+            <gml:description>Open Science Catalog {{ value['description'] }}</gml:description>
+            <gml:identifier codeSpace="OSC">OSC_{{ value['identifier'] }}</gml:identifier>
+            {% for entry in value['entries'] %}
+            <gmx:codeEntry>
+                <gmx:CodeDefinition gml:id="OSC_{{ value['identifier'] }}_{{ entry['identifier'] }}">
+                    <gml:identifier codeSpace="OSC">{{ entry['identifier'] }}</gml:identifier>
+                    <gml:description>{{ entry['description'] }}</gml:description>
+                    {% if 'url' in entry %}
+                    <gml:descriptionReference xlink:type="simple" xlink:href"{{ entry['url'] }}"/>
+                    {% endif %}
+                </gmx:CodeDefinition>
+            </gmx:codeEntry>
+            {% endfor %}
+        </gmx:CodeListDictionary>
+    </gmx:codelistItem>
+    {% endfor %}
+</gmx:CT_CodelistCatalogue>
