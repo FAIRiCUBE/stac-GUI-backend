@@ -92,7 +92,7 @@ def generate_project_metadata(rec):
     mcf['identification']['keywords']['themes'] = build_theme_keywords(rec)
 
     mcf['identification']['keywords']['short-name'] = {
-        'keywords': rec['Short_Name'],
+        'keywords': [rec['Short_Name']],
         'keywords_type': 'theme'
     }
 
@@ -134,7 +134,7 @@ def generate_product_metadata(rec, parent_id=None):
     mcf = deepcopy(MCF_TEMPLATE)
     now = datetime.now().isoformat()
 
-    identifier = f'project-{rec["ID"]}'
+    identifier = f'product-{rec["ID"]}'
 
     mcf['metadata']['identifier'] = identifier
     mcf['metadata']['hierarchylevel'] = 'dataset'
@@ -147,7 +147,7 @@ def generate_product_metadata(rec, parent_id=None):
         mcf['identification']['parenidentifier'] = parent_id
 
     mcf['identification']['keywords']['default'] = {
-        'keywords': rec['Variable'],
+        'keywords': [rec['Variable']],
         'keywords_type': 'theme'
     }
 
