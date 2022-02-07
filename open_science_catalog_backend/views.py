@@ -1,8 +1,9 @@
+from enum import Enum
 from http import HTTPStatus
 import logging
 
+from fastapi import Request
 from pydantic import BaseModel
-from starlette.requests import Request
 from slugify import slugify
 
 from open_science_catalog_backend import app
@@ -51,8 +52,13 @@ class ItemsResponse(BaseModel):
     items: list[str]
 
 
+class Filtering(str, Enum):
+    pending = "pending"
+    confirmed = "confirmed"
+
+
 @app.get("/items", response_model=ItemsResponse)
-async def get_items():
+async def get_items(filter: Filtering = Filtering.confirmed):
     """Get list of IDs of items for a certain user/workspace.
 
     Returns submissions in git repo by default, but can also return
@@ -60,12 +66,15 @@ async def get_items():
     """
     username = "my-user"  # TODO
 
-    # TODO: allow choose between pending / confirmed
-    # TODO: implement confirmed by listing current main dir (filename must be id!)
+    if filter == Filtering.pending:
+        items = [
+            pr_body.item_id for pr_body in pull_requests_for_user(username=username)
+        ]
+    else:
+        # TODO: implement confirmed by listing current main dir (filename must be id!)
+        items = ["abc" for item in []]
 
-    return ItemsResponse(
-        items=[pr_body.item_id for pr_body in pull_requests_for_user(username=username)]
-    )
+    return ItemsResponse(items=items)
 
 
 @app.get("/items/{item_id}")

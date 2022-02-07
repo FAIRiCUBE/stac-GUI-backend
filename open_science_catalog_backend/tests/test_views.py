@@ -37,6 +37,6 @@ def test_create_item_without_auth_fails(client):
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_get_items_returns_list_for_user(client, mock_get_pull_requests):
-    response = client.get("/items")
+def test_get_items_returns_pending_list_for_user(client, mock_get_pull_requests):
+    response = client.get("/items", params={"filter": "pending"})
     assert response.json()["items"] == ["jkl"]
