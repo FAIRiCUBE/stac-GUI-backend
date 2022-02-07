@@ -4,7 +4,7 @@ import time
 from fastapi import FastAPI, Request
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
-app = FastAPI()
+app = FastAPI(title="Open Science Catalog")
 
 app.add_middleware(PrometheusMiddleware)
 app.add_route("/metrics", handle_metrics)
