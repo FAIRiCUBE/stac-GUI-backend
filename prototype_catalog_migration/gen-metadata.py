@@ -159,7 +159,7 @@ def generate_product_metadata(rec, parent_id=None):
 
     if row['Region']:
         mcf['identification']['keywords']['region'] = {
-            'keywords': rec['Region'],
+            'keywords': [rec['Region']],
             'keywords_type': 'theme'
         }
 
