@@ -1,3 +1,3 @@
 Jinja2
-# pygeometa
--e git+https://github.com/geopython/pygeometa/#egg=pygeometa
+pygeometa
+# -e git+https://github.com/geopython/pygeometa/#egg=pygeometa
