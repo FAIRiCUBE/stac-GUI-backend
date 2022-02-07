@@ -1,3 +1,4 @@
 import os
 
-TEST_CONFIG: str = os.environ["TEST_CONFIG"]
+GITHUB_TOKEN: str = os.environ["GITHUB_TOKEN"]
+GITHUB_REPO_ID: str = os.environ["GITHUB_REPO_ID"]

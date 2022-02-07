@@ -7,4 +7,7 @@ services:
         volumes:
         - .:/srv/service
         env_file: test_environment.env
+        environment:
+          GITHUB_TOKEN: "${GITHUB_TOKEN}"
+          GITHUB_REPO_ID: "${GITHUB_REPO_ID}"
         command: uvicorn --reload --host=0.0.0.0 --port 5000 --log-level=info --reload open_science_catalog_backend:app

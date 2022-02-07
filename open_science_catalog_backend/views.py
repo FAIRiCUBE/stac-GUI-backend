@@ -1,11 +1,15 @@
 from http import HTTPStatus
+import json
 import logging
 
-from fastapi import HTTPException, Path, Response, BackgroundTasks
+from fastapi import HTTPException, Response, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from starlette.requests import Request
+from slugify import slugify
 
 from open_science_catalog_backend import app, config
+from open_science_catalog_backend.pull_request import create_pull_request
 
 
 # TODO: fix logging output with gunicorn
@@ -16,9 +20,24 @@ logger = logging.getLogger(__name__)
 
 
 @app.post("/item", status_code=HTTPStatus.CREATED)
-async def create_item():
+async def create_item(request: Request):
     """Publish request body (stac file) to file in github repo via PR"""
-    raise NotImplementedError
+    username = "my-user"  # TODO
+
+    filename = "myfile.json"
+    # TODO: decide whether to pass content via json body or file upload
+    #       possibly use UploadFile https://fastapi.tiangolo.com/tutorial/request-files/
+    #       install python-multipart
+    stac_item = await request.body()
+
+    path_in_repo = f"{username}/{filename}"
+
+    create_pull_request(
+        branch_base_name=slugify(path_in_repo)[:30],
+        pr_title=f"Add {path_in_repo}",
+        pr_body=json.dumps({"username": username}),
+        file_to_create=(path_in_repo, stac_item),
+    )
 
 
 @app.get("/item")
