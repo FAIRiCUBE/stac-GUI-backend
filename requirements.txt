@@ -16,3 +16,4 @@ flake8==4.0.1
 mypy
 black
 ipdb
+types-python-slugify
