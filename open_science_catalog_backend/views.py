@@ -2,7 +2,7 @@ from enum import Enum
 from http import HTTPStatus
 import logging
 
-from fastapi import Request
+from fastapi import Request, Response
 from pydantic import BaseModel
 from slugify import slugify
 
@@ -11,6 +11,7 @@ from open_science_catalog_backend.pull_request import (
     create_pull_request,
     pull_requests_for_user,
     PullRequestBody,
+    files_for_user,
 )
 
 
@@ -32,19 +33,27 @@ async def create_item(request: Request):
     #       install python-multipart
     stac_item = await request.body()
 
+    # TODO: what if item already exists?
+
     _create_upload_pr(
         username=username,
         filename=filename,
         contents=stac_item,
+        is_update=False,
     )
+    return Response(status_code=HTTPStatus.CREATED)
 
 
 def _path_in_repo(username: str, filename: str) -> str:
     return f"{username}/{filename}"
 
 
-def _create_upload_pr(username: str, filename: str, contents: bytes) -> None:
-
+def _create_upload_pr(
+    username: str,
+    filename: str,
+    contents: bytes,
+    is_update: bool,
+) -> None:
     # TODO: different item id?
     pr_body = PullRequestBody(
         item_id=filename,
@@ -54,7 +63,7 @@ def _create_upload_pr(username: str, filename: str, contents: bytes) -> None:
     path_in_repo = _path_in_repo(username=username, filename=filename)
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
-        pr_title=f"Add {path_in_repo}",
+        pr_title=f"{'Update' if is_update else 'Add'} {path_in_repo}",
         pr_body=pr_body.serialize(),
         file_to_create=(path_in_repo, contents),
     )
@@ -82,8 +91,7 @@ async def get_items(filter: Filtering = Filtering.confirmed):
             pr_body.item_id for pr_body in pull_requests_for_user(username=username)
         ]
     else:
-        # TODO: implement confirmed by listing current main dir (filename must be id!)
-        items = ["abc" for item in []]
+        items = files_for_user(username=username)
 
     return ItemsResponse(items=items)
 
@@ -104,6 +112,8 @@ async def put_item(item_id: str, request: Request):
     # TODO: is item_id the filename? keep in sync with POSTconfigconfig
     filename = item_id
 
+    logger.info(f"Creating PR to update item {item_id}")
+
     # TODO: decide whether to pass content via json body or file upload
     #       possibly use UploadFile https://fastapi.tiangolo.com/tutorial/request-files/
     #       install python-multipart
@@ -113,7 +123,9 @@ async def put_item(item_id: str, request: Request):
         username=username,
         filename=filename,
         contents=stac_item,
+        is_update=True,
     )
+    return Response()
 
 
 @app.delete("/items/{item_id}", status_code=HTTPStatus.NO_CONTENT)
@@ -121,9 +133,11 @@ async def delete_item(item_id: str):
     """Delete existing repository item via a PR"""
     filename = item_id
     path_in_repo = _path_in_repo(username=username, filename=filename)
+    logger.info(f"Creating PR to delete item {path_in_repo}")
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
         pr_title=f"Delete {path_in_repo}",
         pr_body="",
         file_to_delete=path_in_repo,
     )
+    return Response(status_code=HTTPStatus.NO_CONTENT)

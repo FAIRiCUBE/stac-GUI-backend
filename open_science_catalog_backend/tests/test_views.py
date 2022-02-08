@@ -13,12 +13,21 @@ def mock_create_pull_request():
 
 
 @pytest.fixture()
-def mock_get_pull_requests():
+def mock_pull_requests_for_user():
     with mock.patch(
         "open_science_catalog_backend.views.pull_requests_for_user",
         return_value=[
             PullRequestBody(username="abc", item_id="pending_item"),
         ],
+    ) as mocker:
+        yield mocker
+
+
+@pytest.fixture()
+def mock_files_for_user():
+    with mock.patch(
+        "open_science_catalog_backend.views.files_for_user",
+        return_value=["confirmed_item"],
     ) as mocker:
         yield mocker
 
@@ -36,12 +45,12 @@ def test_create_item_without_auth_fails(client):
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_get_items_returns_pending_list_for_user(client, mock_get_pull_requests):
+def test_get_items_returns_pending_list_for_user(client, mock_pull_requests_for_user):
     response = client.get("/items", params={"filter": "pending"})
     assert response.json()["items"] == ["pending_item"]
 
 
-def test_get_items_returns_confirmed_list_for_user(client, mock_get_pull_requests):
+def test_get_items_returns_confirmed_list_for_user(client, mock_files_for_user):
     response = client.get("/items", params={"filter": "confirmed"})
     assert response.json()["items"] == ["confirmed_item"]
 

@@ -1,0 +1,156 @@
+import dataclasses
+import logging
+import json
+from pathlib import PurePath
+import urllib.parse
+import typing
+
+import github
+import github.Repository
+
+from open_science_catalog_backend import config
+
+logger = logging.getLogger(__name__)
+
+
+def _repo() -> github.Repository.Repository:
+    return github.Github(config.GITHUB_TOKEN).get_repo(config.GITHUB_REPO_ID)
+
+
+@dataclasses.dataclass(frozen=True)
+class PullRequestBody:
+    item_id: str
+    username: str
+
+    def serialize(self):
+        return json.dumps(dataclasses.asdict(self))
+
+    @classmethod
+    def deserialize(cls, data: str) -> "PullRequestBody":
+        try:
+            return cls(**json.loads(data))
+        except (json.JSONDecodeError, TypeError) as e:
+            raise cls.DeserializeError() from e
+
+    class DeserializeError(Exception):
+        pass
+
+
+def pull_requests_for_user(username: str) -> typing.Iterable[PullRequestBody]:
+    for pr in _repo().get_pulls():
+        try:
+            pr_body = PullRequestBody.deserialize(pr.body)
+        except PullRequestBody.DeserializeError:
+            # probably manually create PR
+            pass
+        else:
+            if pr_body.username == username:
+                yield pr_body
+
+
+def files_for_user(username: str) -> typing.List[str]:
+    logger.info(f"Fetching tree for {username}")
+    try:
+        git_tree = _repo().get_git_tree(f"{config.GITHUB_MAIN_BRANCH}:{username}")
+    except github.UnknownObjectException:
+        logger.info("Didn't find a git tree")
+        return []
+    else:
+        return [node.path for node in git_tree.tree]
+
+
+def create_pull_request(
+    branch_base_name: str,
+    pr_title: str,
+    pr_body: str,
+    file_to_create: typing.Optional[tuple[str, bytes]] = None,
+    file_to_delete: typing.Optional[str] = None,
+):
+    logger.info("Creating pull request")
+    logger.info(f"File to create: {file_to_create[0] if file_to_create else None}")
+    logger.info(f"File to delete: {file_to_delete}")
+
+    repo = _repo()
+
+    branch_name = _create_branch(repo, branch_base_name=branch_base_name)
+
+    if file_to_create:
+        repo.update_file(
+            path=file_to_create[0],
+            message=f"Add {file_to_create[0]} for pull request submission",
+            content=file_to_create[1],
+            sha=_previous_version_sha(repo, path=file_to_create[0]),
+            branch=branch_name,
+        )
+
+    if file_to_delete:
+        repo.delete_file(
+            path=file_to_delete,
+            message=f"Delete {file_to_delete} for pull request submission",
+            sha=_previous_version_sha(repo, path=file_to_delete),
+            branch=branch_name,
+        )
+
+    repo.create_pull(
+        title=pr_title,
+        body=pr_body,
+        head=branch_name,
+        base=config.GITHUB_MAIN_BRANCH,
+        maintainer_can_modify=True,
+    )
+
+    logger.info("Pull request successfully created")
+
+
+def _create_branch(
+    repo: github.Repository.Repository,
+    branch_base_name: str,
+    postfix: int = 1,
+) -> str:
+    main_branch = repo.get_branch(config.GITHUB_MAIN_BRANCH)
+    branch_name = branch_base_name + ("" if postfix == 1 else f"-{postfix}")
+    logger.info(f"Creating branch with {branch_name}")
+    try:
+        repo.create_git_ref(
+            ref=f"refs/heads/{branch_name}",
+            sha=main_branch.commit.sha,
+        )
+        return branch_name
+    except github.GithubException as e:
+        if e.status == 422:
+            # we assume that 422 unprocessable entity means branch exists
+
+            if postfix > 15:  # safety
+                raise
+
+            return _create_branch(
+                repo=repo,
+                branch_base_name=branch_base_name,
+                postfix=postfix + 1,
+            )
+        else:
+            raise
+
+
+def _previous_version_sha(
+    repo: github.Repository.Repository,
+    path: str,
+) -> str:
+    pure_path = PurePath(path)
+    encoded_tree_ref = urllib.parse.urlencode(
+        {"": f"{config.GITHUB_MAIN_BRANCH}:{pure_path.parent}"}
+    )[1:]
+    try:
+        parent_tree = repo.get_git_tree(encoded_tree_ref, recursive=False)
+    except github.UnknownObjectException:
+        # parent doesn't exist, so this is a new file
+        return ""
+
+    return next(
+        (
+            tree_elem.sha
+            for tree_elem in parent_tree.tree
+            if tree_elem.path == pure_path.name
+        ),
+        "",  # this submission is a new file, that's fine
+    )
