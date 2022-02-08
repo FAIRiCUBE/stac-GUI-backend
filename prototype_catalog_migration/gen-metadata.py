@@ -144,7 +144,7 @@ def generate_product_metadata(rec, parent_id=None):
     mcf['identification']['status'] = STATUSES[rec['Status']]
 
     if parent_id is not None:
-        mcf['identification']['parenidentifier'] = parent_id
+        mcf['metadata']['parentidentifier'] = parent_id
 
     mcf['identification']['keywords']['default'] = {
         'keywords': [rec['Variable']],
