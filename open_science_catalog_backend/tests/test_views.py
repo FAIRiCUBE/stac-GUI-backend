@@ -25,8 +25,8 @@ def mock_get_pull_requests():
 
 def test_post_item_creates_pull_request(client, mock_create_pull_request):
     response = client.post("/items", json={"test": "foo"})
-    mock_create_pull_request.assert_called_once()
 
+    mock_create_pull_request.assert_called_once()
     assert response.status_code == HTTPStatus.CREATED
 
 
@@ -48,6 +48,15 @@ def test_get_items_returns_confirmed_list_for_user(client, mock_get_pull_request
 
 def test_put_item_creates_pull_request(client, mock_create_pull_request):
     response = client.put("/items/a", json={"test": "update"})
-    mock_create_pull_request.assert_called_once()
 
+    mock_create_pull_request.assert_called_once()
     assert response.status_code == HTTPStatus.OK
+
+
+def test_delete_item_creates_pull_request(client, mock_create_pull_request):
+    response = client.delete("/items/a")
+
+    assert (
+        mock_create_pull_request.mock_calls[0].kwargs["file_to_delete"] == "my-user/a"
+    )
+    assert response.status_code == HTTPStatus.NO_CONTENT

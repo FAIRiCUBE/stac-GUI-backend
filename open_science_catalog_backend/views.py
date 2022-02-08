@@ -32,15 +32,18 @@ async def create_item(request: Request):
     #       install python-multipart
     stac_item = await request.body()
 
-    _create_item_pr(
+    _create_upload_pr(
         username=username,
         filename=filename,
         contents=stac_item,
     )
 
 
-def _create_item_pr(username: str, filename: str, contents: bytes) -> None:
-    path_in_repo = f"{username}/{filename}"
+def _path_in_repo(username: str, filename: str) -> str:
+    return f"{username}/{filename}"
+
+
+def _create_upload_pr(username: str, filename: str, contents: bytes) -> None:
 
     # TODO: different item id?
     pr_body = PullRequestBody(
@@ -48,6 +51,7 @@ def _create_item_pr(username: str, filename: str, contents: bytes) -> None:
         username=username,
     )
 
+    path_in_repo = _path_in_repo(username=username, filename=filename)
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
         pr_title=f"Add {path_in_repo}",
@@ -105,14 +109,21 @@ async def put_item(item_id: str, request: Request):
     #       install python-multipart
     stac_item = await request.body()
 
-    _create_item_pr(
+    _create_upload_pr(
         username=username,
         filename=filename,
         contents=stac_item,
     )
 
 
-@app.delete("/items/{item_id}")
+@app.delete("/items/{item_id}", status_code=HTTPStatus.NO_CONTENT)
 async def delete_item(item_id: str):
     """Delete existing repository item via a PR"""
-    raise NotImplementedError
+    filename = item_id
+    path_in_repo = _path_in_repo(username=username, filename=filename)
+    create_pull_request(
+        branch_base_name=slugify(path_in_repo)[:30],
+        pr_title=f"Delete {path_in_repo}",
+        pr_body="",
+        file_to_delete=path_in_repo,
+    )
