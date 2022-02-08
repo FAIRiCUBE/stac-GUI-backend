@@ -15,7 +15,6 @@ from open_science_catalog_backend.pull_request import (
 )
 
 
-# TODO: fix logging output with gunicorn
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +32,7 @@ async def create_item(request: Request):
     #       install python-multipart
     stac_item = await request.body()
 
-    # TODO: what if item already exists?
+    # NOTE: if this file already exists, this will lead to an override
 
     _create_upload_pr(
         username=username,
@@ -96,7 +95,8 @@ async def get_items(filter: Filtering = Filtering.confirmed):
     return ItemsResponse(items=items)
 
 
-@app.get("/items/{item_id}")
+# TODO: this is not exposed until we figure out if we really need this
+# @app.get("/items/{item_id}")
 async def get_item(item_id: str):
     """Retrieves STAC item from github repository.
 
