@@ -17,15 +17,14 @@ def mock_get_pull_requests():
     with mock.patch(
         "open_science_catalog_backend.views.pull_requests_for_user",
         return_value=[
-            PullRequestBody(username="abc", item_id="jkl"),
+            PullRequestBody(username="abc", item_id="pending_item"),
         ],
     ) as mocker:
         yield mocker
 
 
-def test_create_item_creates_pull_request(client, mock_create_pull_request):
+def test_post_item_creates_pull_request(client, mock_create_pull_request):
     response = client.post("/items", json={"test": "foo"})
-    mock_create_pull_request.assert_called_once()
     mock_create_pull_request.assert_called_once()
 
     assert response.status_code == HTTPStatus.CREATED
@@ -39,4 +38,16 @@ def test_create_item_without_auth_fails(client):
 
 def test_get_items_returns_pending_list_for_user(client, mock_get_pull_requests):
     response = client.get("/items", params={"filter": "pending"})
-    assert response.json()["items"] == ["jkl"]
+    assert response.json()["items"] == ["pending_item"]
+
+
+def test_get_items_returns_confirmed_list_for_user(client, mock_get_pull_requests):
+    response = client.get("/items", params={"filter": "confirmed"})
+    assert response.json()["items"] == ["confirmed_item"]
+
+
+def test_put_item_creates_pull_request(client, mock_create_pull_request):
+    response = client.put("/items/a", json={"test": "update"})
+    mock_create_pull_request.assert_called_once()
+
+    assert response.status_code == HTTPStatus.OK

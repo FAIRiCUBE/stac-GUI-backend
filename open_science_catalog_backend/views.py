@@ -18,13 +18,13 @@ from open_science_catalog_backend.pull_request import (
 logger = logging.getLogger(__name__)
 
 
-# TODO: AUTH: jwt token?
+# TODO: Auth
+username = "my-user"
 
 
 @app.post("/items", status_code=HTTPStatus.CREATED)
 async def create_item(request: Request):
     """Publish request body (stac file) to file in github repo via PR"""
-    username = "my-user"  # TODO
 
     filename = "myfile.json"
     # TODO: decide whether to pass content via json body or file upload
@@ -32,6 +32,14 @@ async def create_item(request: Request):
     #       install python-multipart
     stac_item = await request.body()
 
+    _create_item_pr(
+        username=username,
+        filename=filename,
+        contents=stac_item,
+    )
+
+
+def _create_item_pr(username: str, filename: str, contents: bytes) -> None:
     path_in_repo = f"{username}/{filename}"
 
     # TODO: different item id?
@@ -44,7 +52,7 @@ async def create_item(request: Request):
         branch_base_name=slugify(path_in_repo)[:30],
         pr_title=f"Add {path_in_repo}",
         pr_body=pr_body.serialize(),
-        file_to_create=(path_in_repo, stac_item),
+        file_to_create=(path_in_repo, contents),
     )
 
 
@@ -64,7 +72,6 @@ async def get_items(filter: Filtering = Filtering.confirmed):
     Returns submissions in git repo by default, but can also return
     pending submissions.
     """
-    username = "my-user"  # TODO
 
     if filter == Filtering.pending:
         items = [
@@ -87,9 +94,22 @@ async def get_item(item_id: str):
 
 
 @app.put("/items/{item_id}")
-async def put_item(item_id: str):
+async def put_item(item_id: str, request: Request):
     """Update existing repository item via a PR"""
-    raise NotImplementedError
+
+    # TODO: is item_id the filename? keep in sync with POSTconfigconfig
+    filename = item_id
+
+    # TODO: decide whether to pass content via json body or file upload
+    #       possibly use UploadFile https://fastapi.tiangolo.com/tutorial/request-files/
+    #       install python-multipart
+    stac_item = await request.body()
+
+    _create_item_pr(
+        username=username,
+        filename=filename,
+        contents=stac_item,
+    )
 
 
 @app.delete("/items/{item_id}")
