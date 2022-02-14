@@ -33,7 +33,7 @@
                     <gml:identifier codeSpace="OSC">{{ entry['identifier'] }}</gml:identifier>
                     <gml:description>{{ entry['description'] }}</gml:description>
                     {% if 'url' in entry %}
-                    <gml:descriptionReference xlink:type="simple" xlink:href"{{ entry['url'] }}"/>
+                    <gml:descriptionReference xlink:type="simple" xlink:href="{{ entry['url'] }}"/>
                     {% endif %}
                 </gmx:CodeDefinition>
             </gmx:codeEntry>
