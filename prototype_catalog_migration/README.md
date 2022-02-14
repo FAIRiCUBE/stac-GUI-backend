@@ -8,7 +8,7 @@ This code is to help initialize the Open Data Science Catalogue
 pip install -r requirements.txt
 
 # run the process
-python3 gen-metadata.py Projects-2021-12-20.csv Products-2021-12-20.csv Themes.csv Variables.csv Missions-2021-12-20.csv 
+python3 gen-metadata.py Projects-2021-12-20.csv Products-2021-12-20.csv Themes.csv Variables.csv EO\ Missions-2021-12-20.csv
 ```
 
 The process should take approximately 30 seconds, and will create an
