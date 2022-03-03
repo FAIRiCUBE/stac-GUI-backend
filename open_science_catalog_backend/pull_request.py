@@ -19,7 +19,8 @@ def _repo() -> github.Repository.Repository:
 
 @dataclasses.dataclass(frozen=True)
 class PullRequestBody:
-    item_id: str
+    filename: str
+    item_type: str
     username: str
 
     def serialize(self):
@@ -41,22 +42,22 @@ def pull_requests_for_user(username: str) -> typing.Iterable[PullRequestBody]:
         try:
             pr_body = PullRequestBody.deserialize(pr.body)
         except PullRequestBody.DeserializeError:
-            # probably manually create PR
+            # probably manually created PR
             pass
         else:
             if pr_body.username == username:
                 yield pr_body
 
 
-def files_for_user(username: str) -> typing.List[str]:
-    logger.info(f"Fetching tree for {username}")
+def files_in_directory(directory: str) -> typing.List[str]:
+    logger.info(f"Fetching tree for {directory}")
     try:
-        git_tree = _repo().get_git_tree(f"{config.GITHUB_MAIN_BRANCH}:{username}")
+        git_tree = _repo().get_git_tree(f"{config.GITHUB_MAIN_BRANCH}:{directory}")
     except github.UnknownObjectException:
         logger.info("Didn't find a git tree")
         return []
     else:
-        return [node.path for node in git_tree.tree]
+        return [PurePath(node.path).name for node in git_tree.tree]
 
 
 def create_pull_request(

@@ -1,5 +1,6 @@
 from enum import Enum
 from http import HTTPStatus
+from pathlib import PurePath
 import logging
 
 from fastapi import Request, Response
@@ -11,7 +12,7 @@ from open_science_catalog_backend.pull_request import (
     create_pull_request,
     pull_requests_for_user,
     PullRequestBody,
-    files_for_user,
+    files_in_directory,
 )
 
 
@@ -22,20 +23,22 @@ logger = logging.getLogger(__name__)
 username = "my-user"
 
 
-@app.post("/items", status_code=HTTPStatus.CREATED)
-async def create_item(request: Request):
+class ItemType(str, Enum):
+    projects = "projects"
+    products = "products"
+
+
+@app.post("/items/{item_type}/{filename}", status_code=HTTPStatus.CREATED)
+async def create_item(request: Request, item_type: ItemType, filename: str):
     """Publish request body (stac file) to file in github repo via PR"""
 
-    filename = "myfile.json"
-    # TODO: decide whether to pass content via json body or file upload
-    #       possibly use UploadFile https://fastapi.tiangolo.com/tutorial/request-files/
-    #       install python-multipart
     stac_item = await request.body()
 
     # NOTE: if this file already exists, this will lead to an override
 
     _create_upload_pr(
         username=username,
+        item_type=item_type,
         filename=filename,
         contents=stac_item,
         is_update=False,
@@ -43,23 +46,26 @@ async def create_item(request: Request):
     return Response(status_code=HTTPStatus.CREATED)
 
 
-def _path_in_repo(username: str, filename: str) -> str:
-    return f"{username}/{filename}"
+def _path_in_repo(item_type: ItemType, filename: str) -> str:
+    return str(PurePath(item_type.value) / filename)
 
 
 def _create_upload_pr(
     username: str,
+    item_type: ItemType,
     filename: str,
     contents: bytes,
     is_update: bool,
 ) -> None:
-    # TODO: different item id?
+
+    path_in_repo = _path_in_repo(item_type, filename)
+
     pr_body = PullRequestBody(
-        item_id=filename,
+        item_type=item_type.value,
+        filename=filename,
         username=username,
     )
 
-    path_in_repo = _path_in_repo(username=username, filename=filename)
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
         pr_title=f"{'Update' if is_update else 'Add'} {path_in_repo}",
@@ -77,20 +83,22 @@ class Filtering(str, Enum):
     confirmed = "confirmed"
 
 
-@app.get("/items", response_model=ItemsResponse)
-async def get_items(filter: Filtering = Filtering.confirmed):
+@app.get("/items/{item_type}", response_model=ItemsResponse)
+async def get_items(item_type: ItemType, filter: Filtering = Filtering.confirmed):
     """Get list of IDs of items for a certain user/workspace.
 
-    Returns submissions in git repo by default, but can also return
-    pending submissions.
+    Returns submissions in git repo by default (all users), but can also return
+    pending submissions for the current user.
     """
 
     if filter == Filtering.pending:
         items = [
-            pr_body.item_id for pr_body in pull_requests_for_user(username=username)
+            pr_body.filename
+            for pr_body in pull_requests_for_user(username=username)
+            if pr_body.item_type == item_type.value
         ]
     else:
-        items = files_for_user(username=username)
+        items = files_in_directory(directory=item_type.value)
 
     return ItemsResponse(items=items)
 
@@ -105,8 +113,8 @@ async def get_item(item_id: str):
     raise NotImplementedError
 
 
-@app.put("/items/{item_id}")
-async def put_item(item_id: str, request: Request):
+@app.put("/items/{item_type}/{item_id}")
+async def put_item(item_type: ItemType, item_id: str, request: Request):
     """Update existing repository item via a PR"""
 
     # TODO: is item_id the filename? keep in sync with POSTconfigconfig
@@ -121,6 +129,7 @@ async def put_item(item_id: str, request: Request):
 
     _create_upload_pr(
         username=username,
+        item_type=item_type,
         filename=filename,
         contents=stac_item,
         is_update=True,
@@ -128,11 +137,10 @@ async def put_item(item_id: str, request: Request):
     return Response()
 
 
-@app.delete("/items/{item_id}", status_code=HTTPStatus.NO_CONTENT)
-async def delete_item(item_id: str):
+@app.delete("/items/{item_type}/{filename}", status_code=HTTPStatus.NO_CONTENT)
+async def delete_item(item_type: ItemType, filename: str):
     """Delete existing repository item via a PR"""
-    filename = item_id
-    path_in_repo = _path_in_repo(username=username, filename=filename)
+    path_in_repo = _path_in_repo(item_type=item_type, filename=filename)
     logger.info(f"Creating PR to delete item {path_in_repo}")
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
