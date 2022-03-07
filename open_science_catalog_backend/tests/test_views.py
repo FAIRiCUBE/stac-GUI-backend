@@ -67,9 +67,10 @@ def test_put_item_creates_pull_request(client, mock_create_pull_request):
 
 
 def test_delete_item_creates_pull_request(client, mock_create_pull_request):
-    response = client.delete("/items/products/a")
+    response = client.delete("/items/products/a.json")
 
     assert (
-        mock_create_pull_request.mock_calls[0].kwargs["file_to_delete"] == "products/a"
+        mock_create_pull_request.mock_calls[0].kwargs["file_to_delete"]
+        == "data/products/a.json"
     )
     assert response.status_code == HTTPStatus.NO_CONTENT

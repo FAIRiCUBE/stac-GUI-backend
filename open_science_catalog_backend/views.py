@@ -18,6 +18,7 @@ from open_science_catalog_backend.pull_request import (
 
 logger = logging.getLogger(__name__)
 
+PREFIX_IN_REPO = PurePath("data")
 
 # TODO: Auth
 username = "my-user"
@@ -49,7 +50,7 @@ async def create_item(request: Request, item_type: ItemType, filename: str):
 
 
 def _path_in_repo(item_type: ItemType, filename: str) -> str:
-    return str(PurePath(item_type.value) / filename)
+    return str(PREFIX_IN_REPO / item_type.value / filename)
 
 
 def _create_upload_pr(
