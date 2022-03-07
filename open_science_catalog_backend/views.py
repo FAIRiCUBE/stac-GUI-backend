@@ -31,6 +31,10 @@ class ItemType(str, Enum):
     themes = "themes"
 
 
+def _path_in_repo(item_type: ItemType, filename: str) -> str:
+    return str(PREFIX_IN_REPO / item_type.value / filename)
+
+
 @app.post("/items/{item_type}/{filename}", status_code=HTTPStatus.CREATED)
 async def create_item(request: Request, item_type: ItemType, filename: str):
     """Publish request body (stac file) to file in github repo via PR"""
@@ -49,8 +53,22 @@ async def create_item(request: Request, item_type: ItemType, filename: str):
     return Response(status_code=HTTPStatus.CREATED)
 
 
-def _path_in_repo(item_type: ItemType, filename: str) -> str:
-    return str(PREFIX_IN_REPO / item_type.value / filename)
+@app.put("/items/{item_type}/{filename}")
+async def put_item(request: Request, item_type: ItemType, filename: str):
+    """Update existing repository item via a PR"""
+
+    logger.info(f"Creating PR to update item {filename}")
+
+    stac_item = await request.body()
+
+    _create_upload_pr(
+        username=username,
+        item_type=item_type,
+        filename=filename,
+        contents=stac_item,
+        is_update=True,
+    )
+    return Response()
 
 
 def _create_upload_pr(
@@ -114,30 +132,6 @@ async def get_item(item_id: str):
     Does not support fetching pending submissions.
     """
     raise NotImplementedError
-
-
-@app.put("/items/{item_type}/{item_id}")
-async def put_item(item_type: ItemType, item_id: str, request: Request):
-    """Update existing repository item via a PR"""
-
-    # TODO: is item_id the filename? keep in sync with POSTconfigconfig
-    filename = item_id
-
-    logger.info(f"Creating PR to update item {item_id}")
-
-    # TODO: decide whether to pass content via json body or file upload
-    #       possibly use UploadFile https://fastapi.tiangolo.com/tutorial/request-files/
-    #       install python-multipart
-    stac_item = await request.body()
-
-    _create_upload_pr(
-        username=username,
-        item_type=item_type,
-        filename=filename,
-        contents=stac_item,
-        is_update=True,
-    )
-    return Response()
 
 
 @app.delete("/items/{item_type}/{filename}", status_code=HTTPStatus.NO_CONTENT)
