@@ -2,6 +2,7 @@ from enum import Enum
 from http import HTTPStatus
 from pathlib import PurePath
 import logging
+import typing
 
 from fastapi import Request, Response
 from pydantic import BaseModel
@@ -31,8 +32,8 @@ class ItemType(str, Enum):
     themes = "themes"
 
 
-def _path_in_repo(item_type: ItemType, filename: str) -> str:
-    return str(PREFIX_IN_REPO / item_type.value / filename)
+def _path_in_repo(item_type: ItemType, filename: typing.Optional[str] = None) -> str:
+    return str(PREFIX_IN_REPO / item_type.value / (filename if filename else ""))
 
 
 @app.post("/items/{item_type}/{filename}", status_code=HTTPStatus.CREATED)
@@ -119,7 +120,7 @@ async def get_items(item_type: ItemType, filter: Filtering = Filtering.confirmed
             if pr_body.item_type == item_type.value
         ]
     else:
-        items = files_in_directory(directory=item_type.value)
+        items = files_in_directory(directory=_path_in_repo(item_type=item_type))
 
     return ItemsResponse(items=items)
 

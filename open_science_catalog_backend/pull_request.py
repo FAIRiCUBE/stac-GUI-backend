@@ -54,7 +54,7 @@ def files_in_directory(directory: str) -> typing.List[str]:
     try:
         git_tree = _repo().get_git_tree(f"{config.GITHUB_MAIN_BRANCH}:{directory}")
     except github.UnknownObjectException:
-        logger.info("Didn't find a git tree")
+        logger.info(f"Didn't find a git tree for {directory}")
         return []
     else:
         return [PurePath(node.path).name for node in git_tree.tree]
