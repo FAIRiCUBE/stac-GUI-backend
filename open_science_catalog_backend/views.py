@@ -40,6 +40,8 @@ def _path_in_repo(item_type: ItemType, filename: typing.Optional[str] = None) ->
 async def create_item(request: Request, item_type: ItemType, filename: str):
     """Publish request body (stac file) to file in github repo via PR"""
 
+    logger.info(f"Creating PR to create item {filename}")
+
     stac_item = await request.body()
 
     # NOTE: if this file already exists, this will lead to an override
@@ -80,13 +82,13 @@ def _create_upload_pr(
     is_update: bool,
 ) -> None:
 
-    path_in_repo = _path_in_repo(item_type, filename)
-
     pr_body = PullRequestBody(
         item_type=item_type.value,
         filename=filename,
         username=username,
     )
+
+    path_in_repo = _path_in_repo(item_type, filename)
 
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
@@ -138,8 +140,11 @@ async def get_item(item_id: str):
 @app.delete("/items/{item_type}/{filename}", status_code=HTTPStatus.NO_CONTENT)
 async def delete_item(item_type: ItemType, filename: str):
     """Delete existing repository item via a PR"""
+
     path_in_repo = _path_in_repo(item_type=item_type, filename=filename)
+
     logger.info(f"Creating PR to delete item {path_in_repo}")
+
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
         pr_title=f"Delete {path_in_repo}",
