@@ -26,6 +26,8 @@ username = "my-user"
 class ItemType(str, Enum):
     projects = "projects"
     products = "products"
+    variables = "variables"
+    themes = "themes"
 
 
 @app.post("/items/{item_type}/{filename}", status_code=HTTPStatus.CREATED)
