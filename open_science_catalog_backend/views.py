@@ -5,7 +5,7 @@ from pathlib import PurePath
 import logging
 import typing
 
-from fastapi import Request, Response
+from fastapi import Request, Response, Depends, HTTPException, Header
 from pydantic import BaseModel
 from slugify import slugify
 
@@ -37,8 +37,24 @@ def _path_in_repo(item_type: ItemType, filename: typing.Optional[str] = None) ->
     return str(PREFIX_IN_REPO / item_type.value / (filename if filename else ""))
 
 
-@app.post("/items/{item_type}/{filename}", status_code=HTTPStatus.CREATED)
-async def create_item(request: Request, item_type: ItemType, filename: str):
+def get_user(x_user: typing.Optional[str] = Header(default=None)) -> str:
+    # NOTE: this header must be secured by another component in the system
+    if not x_user:
+        raise HTTPException(status_code=HTTPStatus.UNAUTHORIZED)
+    else:
+        return x_user
+
+
+@app.post(
+    "/items/{item_type}/{filename}",
+    status_code=HTTPStatus.CREATED,
+)
+async def create_item(
+    request: Request,
+    item_type: ItemType,
+    filename: str,
+    user=Depends(get_user),
+):
     """Publish request body (stac file) to file in github repo via PR"""
 
     logger.info(f"Creating PR to create item {filename}")
@@ -53,12 +69,18 @@ async def create_item(request: Request, item_type: ItemType, filename: str):
         filename=filename,
         contents=request_body,
         is_update=False,
+        user=user,
     )
     return Response(status_code=HTTPStatus.CREATED)
 
 
 @app.put("/items/{item_type}/{filename}")
-async def put_item(request: Request, item_type: ItemType, filename: str):
+async def put_item(
+    request: Request,
+    item_type: ItemType,
+    filename: str,
+    user=Depends(get_user),
+):
     """Update existing repository item via a PR"""
 
     logger.info(f"Creating PR to update item {filename}")
@@ -71,6 +93,7 @@ async def put_item(request: Request, item_type: ItemType, filename: str):
         filename=filename,
         contents=request_body,
         is_update=True,
+        user=user,
     )
     return Response()
 
@@ -81,6 +104,7 @@ def _create_upload_pr(
     filename: str,
     contents: typing.Any,
     is_update: bool,
+    user: str,
 ) -> None:
     change_type = "Update" if is_update else "Add"
     pr_body = PullRequestBody(
@@ -89,6 +113,7 @@ def _create_upload_pr(
         username=username,
         change_type=change_type,
         url=None,  # No url, not submitted yet
+        user=user,
     )
 
     path_in_repo = _path_in_repo(item_type, filename)
@@ -123,7 +148,9 @@ class Filtering(str, Enum):
 
 
 @app.get("/items/{item_type}", response_model=ItemsResponse)
-async def get_items(item_type: ItemType, filter: Filtering = Filtering.confirmed):
+async def get_items(
+    item_type: ItemType, filter: Filtering = Filtering.confirmed, user=Depends(get_user)
+):
     """Get list of IDs of items for a certain user/workspace.
 
     Returns submissions in git repo by default (all users), but can also return
@@ -138,7 +165,7 @@ async def get_items(item_type: ItemType, filter: Filtering = Filtering.confirmed
                 url=pr_body.url,
             )
             for pr_body in pull_requests_for_user(username=username)
-            if pr_body.item_type == item_type.value
+            if pr_body.item_type == item_type.value and pr_body.user == user
         ]
     else:
         items = [
