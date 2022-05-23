@@ -1,4 +1,5 @@
 from enum import Enum
+import json
 from http import HTTPStatus
 from pathlib import PurePath
 import logging
@@ -42,7 +43,7 @@ async def create_item(request: Request, item_type: ItemType, filename: str):
 
     logger.info(f"Creating PR to create item {filename}")
 
-    stac_item = await request.body()
+    request_body = await request.json()
 
     # NOTE: if this file already exists, this will lead to an override
 
@@ -50,7 +51,7 @@ async def create_item(request: Request, item_type: ItemType, filename: str):
         username=username,
         item_type=item_type,
         filename=filename,
-        contents=stac_item,
+        contents=request_body,
         is_update=False,
     )
     return Response(status_code=HTTPStatus.CREATED)
@@ -62,13 +63,13 @@ async def put_item(request: Request, item_type: ItemType, filename: str):
 
     logger.info(f"Creating PR to update item {filename}")
 
-    stac_item = await request.body()
+    request_body = await request.json()
 
     _create_upload_pr(
         username=username,
         item_type=item_type,
         filename=filename,
-        contents=stac_item,
+        contents=request_body,
         is_update=True,
     )
     return Response()
@@ -78,7 +79,7 @@ def _create_upload_pr(
     username: str,
     item_type: ItemType,
     filename: str,
-    contents: bytes,
+    contents: typing.Any,
     is_update: bool,
 ) -> None:
 
@@ -90,11 +91,17 @@ def _create_upload_pr(
 
     path_in_repo = _path_in_repo(item_type, filename)
 
+    # serialize as formatted json
+    serialized_content = json.dumps(
+        contents,
+        indent=4,
+    ).encode("utf-8")
+
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
         pr_title=f"{'Update' if is_update else 'Add'} {path_in_repo}",
         pr_body=pr_body.serialize(),
-        file_to_create=(path_in_repo, contents),
+        file_to_create=(path_in_repo, serialized_content),
     )
 
 

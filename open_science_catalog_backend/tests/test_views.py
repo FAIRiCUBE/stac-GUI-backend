@@ -43,6 +43,13 @@ def test_post_item_creates_pull_request(client, mock_create_pull_request):
     assert response.status_code == HTTPStatus.CREATED
 
 
+def test_post_item_creates_formats_file(client, mock_create_pull_request):
+    client.post("/items/products/a.json", json={"test": "foo"})
+
+    mock_create_pull_request.assert_called_once()
+    assert b"\n" in mock_create_pull_request.mock_calls[0].kwargs["file_to_create"][1]
+
+
 @pytest.mark.skip("auth not implemented yet")
 def test_create_item_without_auth_fails(client):
     response = client.post("/items", json={})
