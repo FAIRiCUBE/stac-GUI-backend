@@ -69,7 +69,7 @@ def test_get_items_returns_pending_list_for_user(client, mock_pull_requests_for_
 
 def test_get_items_returns_confirmed_list_for_user(client, mock_files_in_directory):
     response = client.get("/items/products", params={"filter": "confirmed"})
-    assert response.json()["items"] == ["confirmed_item.json"]
+    assert response.json()["items"][0]["filename"] == "confirmed_item.json"
 
 
 def test_put_item_creates_pull_request(client, mock_create_pull_request):

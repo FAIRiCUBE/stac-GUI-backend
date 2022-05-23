@@ -107,14 +107,14 @@ def _create_upload_pr(
     )
 
 
-class PullRequestResponseItem(BaseModel):
+class ResponseItem(BaseModel):
     filename: str
-    change_type: str
-    url: str
+    change_type: typing.Optional[str]  # only PR
+    url: typing.Optional[str]  # only PR
 
 
 class ItemsResponse(BaseModel):
-    items: typing.Union[list[PullRequestResponseItem], list[str]]
+    items: typing.Union[list[ResponseItem], list[str]]
 
 
 class Filtering(str, Enum):
@@ -131,8 +131,8 @@ async def get_items(item_type: ItemType, filter: Filtering = Filtering.confirmed
     """
 
     if filter == Filtering.pending:
-        items: typing.Union[list[PullRequestResponseItem], list[str]] = [
-            PullRequestResponseItem(
+        items: typing.Union[list[ResponseItem], list[str]] = [
+            ResponseItem(
                 filename=pr_body.filename,
                 change_type=pr_body.change_type,
                 url=pr_body.url,
@@ -141,7 +141,12 @@ async def get_items(item_type: ItemType, filter: Filtering = Filtering.confirmed
             if pr_body.item_type == item_type.value
         ]
     else:
-        items = files_in_directory(directory=_path_in_repo(item_type=item_type))
+        items = [
+            ResponseItem(filename=filename)
+            for filename in files_in_directory(
+                directory=_path_in_repo(item_type=item_type)
+            )
+        ]
 
     return ItemsResponse(items=items)
 
