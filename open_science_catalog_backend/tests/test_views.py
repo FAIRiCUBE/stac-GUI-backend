@@ -21,6 +21,8 @@ def mock_pull_requests_for_user():
                 username="abc",
                 item_type="products",
                 filename="pending_item.json",
+                change_type="Add",
+                url="https://example.com",
             ),
         ],
     ) as mocker:
@@ -58,7 +60,11 @@ def test_create_item_without_auth_fails(client):
 
 def test_get_items_returns_pending_list_for_user(client, mock_pull_requests_for_user):
     response = client.get("/items/products", params={"filter": "pending"})
-    assert response.json()["items"] == ["pending_item.json"]
+    assert response.json()["items"][0] == {
+        "filename": "pending_item.json",
+        "change_type": "Add",
+        "url": "https://example.com",
+    }
 
 
 def test_get_items_returns_confirmed_list_for_user(client, mock_files_in_directory):

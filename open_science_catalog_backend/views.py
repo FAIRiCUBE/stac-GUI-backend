@@ -82,11 +82,13 @@ def _create_upload_pr(
     contents: typing.Any,
     is_update: bool,
 ) -> None:
-
+    change_type = "Update" if is_update else "Add"
     pr_body = PullRequestBody(
         item_type=item_type.value,
         filename=filename,
         username=username,
+        change_type=change_type,
+        url=None,  # No url, not submitted yet
     )
 
     path_in_repo = _path_in_repo(item_type, filename)
@@ -99,14 +101,20 @@ def _create_upload_pr(
 
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
-        pr_title=f"{'Update' if is_update else 'Add'} {path_in_repo}",
+        pr_title=f"{change_type} {path_in_repo}",
         pr_body=pr_body.serialize(),
         file_to_create=(path_in_repo, serialized_content),
     )
 
 
+class PullRequestResponseItem(BaseModel):
+    filename: str
+    change_type: str
+    url: str
+
+
 class ItemsResponse(BaseModel):
-    items: list[str]
+    items: typing.Union[list[PullRequestResponseItem], list[str]]
 
 
 class Filtering(str, Enum):
@@ -123,8 +131,12 @@ async def get_items(item_type: ItemType, filter: Filtering = Filtering.confirmed
     """
 
     if filter == Filtering.pending:
-        items = [
-            pr_body.filename
+        items: typing.Union[list[PullRequestResponseItem], list[str]] = [
+            PullRequestResponseItem(
+                filename=pr_body.filename,
+                change_type=pr_body.change_type,
+                url=pr_body.url,
+            )
             for pr_body in pull_requests_for_user(username=username)
             if pr_body.item_type == item_type.value
         ]

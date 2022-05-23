@@ -22,14 +22,19 @@ class PullRequestBody:
     filename: str
     item_type: str
     username: str
+    change_type: str
+    url: typing.Optional[str]
 
     def serialize(self):
         return json.dumps(dataclasses.asdict(self))
 
     @classmethod
-    def deserialize(cls, data: str) -> "PullRequestBody":
+    def deserialize(cls, data: str, url: str) -> "PullRequestBody":
         try:
-            return cls(**json.loads(data))
+            return cls(
+                url=url,
+                **json.loads(data),
+            )
         except (json.JSONDecodeError, TypeError) as e:
             raise cls.DeserializeError() from e
 
@@ -40,7 +45,7 @@ class PullRequestBody:
 def pull_requests_for_user(username: str) -> typing.Iterable[PullRequestBody]:
     for pr in _repo().get_pulls():
         try:
-            pr_body = PullRequestBody.deserialize(pr.body)
+            pr_body = PullRequestBody.deserialize(pr.body, url=pr.html_url)
         except PullRequestBody.DeserializeError:
             # probably manually created PR
             pass
