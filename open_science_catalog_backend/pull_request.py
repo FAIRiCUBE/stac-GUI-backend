@@ -71,6 +71,7 @@ def create_pull_request(
     pr_body: str,
     file_to_create: typing.Optional[tuple[str, bytes]] = None,
     file_to_delete: typing.Optional[str] = None,
+    labels: typing.Tuple[str, ...] = (),
 ):
     logger.info("Creating pull request")
     logger.info(f"File to create: {file_to_create[0] if file_to_create else None}")
@@ -97,13 +98,15 @@ def create_pull_request(
             branch=branch_name,
         )
 
-    repo.create_pull(
+    pr = repo.create_pull(
         title=pr_title,
         body=pr_body,
         head=branch_name,
         base=config.GITHUB_MAIN_BRANCH,
         maintainer_can_modify=True,
     )
+    if labels:
+        pr.set_labels(*labels)
 
     logger.info("Pull request successfully created")
 

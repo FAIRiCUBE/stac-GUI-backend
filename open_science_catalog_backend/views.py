@@ -140,6 +140,7 @@ def _create_upload_pr(
         pr_title=f"{change_type} {path_in_repo}",
         pr_body=pr_body.serialize(),
         file_to_create=(path_in_repo, serialized_content),
+        labels=("OSCDataOwner",) if data_owner else (),
     )
 
 
