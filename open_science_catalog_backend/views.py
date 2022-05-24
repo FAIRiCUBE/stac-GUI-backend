@@ -132,7 +132,7 @@ def _create_upload_pr(
     # serialize as formatted json
     serialized_content = json.dumps(
         contents,
-        indent=4,
+        indent=2,
     ).encode("utf-8")
 
     create_pull_request(
