@@ -27,14 +27,16 @@ class PullRequestBody:
     data_owner: bool
 
     def serialize(self):
-        return json.dumps(dataclasses.asdict(self))
+        d = dataclasses.asdict(self)
+        d.pop("url")
+        return json.dumps(d)
 
     @classmethod
     def deserialize(cls, data: str, url: str) -> "PullRequestBody":
         try:
             return cls(
-                url=url,
                 **json.loads(data),
+                url=url,
             )
         except (json.JSONDecodeError, TypeError) as e:
             raise cls.DeserializeError() from e
@@ -49,7 +51,7 @@ def pull_requests() -> typing.Iterable[PullRequestBody]:
             yield PullRequestBody.deserialize(pr.body, url=pr.html_url)
         except PullRequestBody.DeserializeError:
             # probably manually created PR
-            pass
+            logger.info("Found incompatible PR, ignoring..", exc_info=True)
 
 
 def files_in_directory(directory: str) -> typing.List[str]:
