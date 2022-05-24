@@ -18,12 +18,11 @@ def mock_create_pull_request():
 
 
 @pytest.fixture()
-def mock_pull_requests_for_user():
+def mock_pull_requests():
     with mock.patch(
-        "open_science_catalog_backend.views.pull_requests_for_user",
+        "open_science_catalog_backend.views.pull_requests",
         return_value=[
             PullRequestBody(
-                username="abc",
                 item_type="products",
                 filename="pending_item.json",
                 change_type="Add",
@@ -66,7 +65,7 @@ def test_create_item_without_auth_fails(client):
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_get_items_returns_pending_list_for_user(client, mock_pull_requests_for_user):
+def test_get_items_returns_pending_list_for_user(client, mock_pull_requests):
     response = client.get(
         "/items/products", params={"filter": "pending"}, headers=VALID_HEADERS
     )

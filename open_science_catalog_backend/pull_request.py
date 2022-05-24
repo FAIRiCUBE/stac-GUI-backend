@@ -21,7 +21,6 @@ def _repo() -> github.Repository.Repository:
 class PullRequestBody:
     filename: str
     item_type: str
-    username: str
     change_type: str
     url: typing.Optional[str]
     user: str
@@ -44,16 +43,13 @@ class PullRequestBody:
         pass
 
 
-def pull_requests_for_user(username: str) -> typing.Iterable[PullRequestBody]:
+def pull_requests() -> typing.Iterable[PullRequestBody]:
     for pr in _repo().get_pulls():
         try:
-            pr_body = PullRequestBody.deserialize(pr.body, url=pr.html_url)
+            yield PullRequestBody.deserialize(pr.body, url=pr.html_url)
         except PullRequestBody.DeserializeError:
             # probably manually created PR
             pass
-        else:
-            if pr_body.username == username:
-                yield pr_body
 
 
 def files_in_directory(directory: str) -> typing.List[str]:

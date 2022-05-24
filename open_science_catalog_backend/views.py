@@ -12,7 +12,7 @@ from slugify import slugify
 from open_science_catalog_backend import app
 from open_science_catalog_backend.pull_request import (
     create_pull_request,
-    pull_requests_for_user,
+    pull_requests,
     PullRequestBody,
     files_in_directory,
 )
@@ -21,9 +21,6 @@ from open_science_catalog_backend.pull_request import (
 logger = logging.getLogger(__name__)
 
 PREFIX_IN_REPO = PurePath("data")
-
-# TODO: Auth
-username = "my-user"
 
 
 class ItemType(str, Enum):
@@ -77,7 +74,6 @@ async def create_item(
     # NOTE: if this file already exists, this will lead to an override
 
     _create_upload_pr(
-        username=username,
         item_type=item_type,
         filename=filename,
         contents=request_body,
@@ -103,7 +99,6 @@ async def put_item(
     request_body = await request.json()
 
     _create_upload_pr(
-        username=username,
         item_type=item_type,
         filename=filename,
         contents=request_body,
@@ -115,7 +110,6 @@ async def put_item(
 
 
 def _create_upload_pr(
-    username: str,
     item_type: ItemType,
     filename: str,
     contents: typing.Any,
@@ -127,7 +121,6 @@ def _create_upload_pr(
     pr_body = PullRequestBody(
         item_type=item_type.value,
         filename=filename,
-        username=username,
         change_type=change_type,
         url=None,  # No url, not submitted yet
         user=user,
@@ -184,7 +177,7 @@ async def get_items(
                 url=pr_body.url,
                 data_owner=pr_body.data_owner,
             )
-            for pr_body in pull_requests_for_user(username=username)
+            for pr_body in pull_requests()
             if pr_body.item_type == item_type.value and pr_body.user == user
         ]
     else:
