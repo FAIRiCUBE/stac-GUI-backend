@@ -45,6 +45,18 @@ def get_user(x_user: typing.Optional[str] = Header(default=None)) -> str:
         return x_user
 
 
+def get_data_owner_role(
+    x_oscdataowner: str = Header(default=""),
+) -> bool:
+    # NOTE: this header must be secured by another component in the system
+    try:
+        return bool(json.loads(x_oscdataowner))
+    except (ValueError, TypeError):
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST, detail="Invalid header X-OSCDataOwner"
+        )
+
+
 @app.post(
     "/items/{item_type}/{filename}",
     status_code=HTTPStatus.CREATED,
@@ -54,6 +66,7 @@ async def create_item(
     item_type: ItemType,
     filename: str,
     user=Depends(get_user),
+    data_owner=Depends(get_data_owner_role),
 ):
     """Publish request body (stac file) to file in github repo via PR"""
 
@@ -70,6 +83,7 @@ async def create_item(
         contents=request_body,
         is_update=False,
         user=user,
+        data_owner=data_owner,
     )
     return Response(status_code=HTTPStatus.CREATED)
 
@@ -80,6 +94,7 @@ async def put_item(
     item_type: ItemType,
     filename: str,
     user=Depends(get_user),
+    data_owner=Depends(get_data_owner_role),
 ):
     """Update existing repository item via a PR"""
 
@@ -94,6 +109,7 @@ async def put_item(
         contents=request_body,
         is_update=True,
         user=user,
+        data_owner=data_owner,
     )
     return Response()
 
@@ -105,6 +121,7 @@ def _create_upload_pr(
     contents: typing.Any,
     is_update: bool,
     user: str,
+    data_owner: bool,
 ) -> None:
     change_type = "Update" if is_update else "Add"
     pr_body = PullRequestBody(
@@ -114,6 +131,7 @@ def _create_upload_pr(
         change_type=change_type,
         url=None,  # No url, not submitted yet
         user=user,
+        data_owner=data_owner,
     )
 
     path_in_repo = _path_in_repo(item_type, filename)
@@ -136,6 +154,7 @@ class ResponseItem(BaseModel):
     filename: str
     change_type: typing.Optional[str]  # only PR
     url: typing.Optional[str]  # only PR
+    data_owner: typing.Optional[bool]  # only PR
 
 
 class ItemsResponse(BaseModel):
@@ -163,6 +182,7 @@ async def get_items(
                 filename=pr_body.filename,
                 change_type=pr_body.change_type,
                 url=pr_body.url,
+                data_owner=pr_body.data_owner,
             )
             for pr_body in pull_requests_for_user(username=username)
             if pr_body.item_type == item_type.value and pr_body.user == user

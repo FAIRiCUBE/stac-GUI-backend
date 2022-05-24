@@ -25,6 +25,7 @@ class PullRequestBody:
     change_type: str
     url: typing.Optional[str]
     user: str
+    data_owner: bool
 
     def serialize(self):
         return json.dumps(dataclasses.asdict(self))
