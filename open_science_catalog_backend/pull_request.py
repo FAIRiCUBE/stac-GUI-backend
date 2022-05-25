@@ -1,4 +1,5 @@
 import dataclasses
+from enum import Enum
 import logging
 import json
 from pathlib import PurePath
@@ -13,6 +14,12 @@ from open_science_catalog_backend import config
 logger = logging.getLogger(__name__)
 
 
+class ChangeType(str, Enum):
+    add = "Add"
+    update = "Update"
+    delete = "Delete"
+
+
 def _repo() -> github.Repository.Repository:
     return github.Github(config.GITHUB_TOKEN).get_repo(config.GITHUB_REPO_ID)
 
@@ -21,7 +28,7 @@ def _repo() -> github.Repository.Repository:
 class PullRequestBody:
     filename: str
     item_type: str
-    change_type: str
+    change_type: ChangeType
     url: typing.Optional[str]
     user: str
     data_owner: bool

@@ -1,9 +1,10 @@
 from http import HTTPStatus
+import json
 from unittest import mock
 
 import pytest
 
-from open_science_catalog_backend.pull_request import PullRequestBody
+from open_science_catalog_backend.pull_request import ChangeType, PullRequestBody
 
 VALID_HEADERS = {
     "X-User": "foo",
@@ -25,7 +26,7 @@ def mock_pull_requests():
             PullRequestBody(
                 item_type="products",
                 filename="pending_item.json",
-                change_type="Add",
+                change_type=ChangeType.add,
                 url="https://example.com",
                 user="foo",
                 data_owner=True,
@@ -94,10 +95,14 @@ def test_put_item_creates_pull_request(client, mock_create_pull_request):
 
 
 def test_delete_item_creates_pull_request(client, mock_create_pull_request):
-    response = client.delete("/items/products/a.json")
+    response = client.delete("/items/products/a.json", headers=VALID_HEADERS)
 
-    assert (
-        mock_create_pull_request.mock_calls[0].kwargs["file_to_delete"]
-        == "data/products/a.json"
-    )
+    mock_kwargs = mock_create_pull_request.mock_calls[0].kwargs
+    assert mock_kwargs["file_to_delete"] == "data/products/a.json"
+    assert json.loads(mock_kwargs["pr_body"])["user"] == VALID_HEADERS["X-User"]
     assert response.status_code == HTTPStatus.NO_CONTENT
+
+
+def test_pr_bodies_can_be_deserialized():
+    serialized_body = '{"filename": "foo.json", "item_type": "projects", "change_type": "Add", "user": "Bernhard", "data_owner": true}'
+    PullRequestBody.deserialize(serialized_body, url="") == 3

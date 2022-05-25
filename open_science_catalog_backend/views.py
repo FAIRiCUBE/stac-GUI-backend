@@ -15,6 +15,7 @@ from open_science_catalog_backend.pull_request import (
     pull_requests,
     PullRequestBody,
     files_in_directory,
+    ChangeType,
 )
 
 
@@ -73,11 +74,11 @@ async def create_item(
 
     # NOTE: if this file already exists, this will lead to an override
 
-    _create_upload_pr(
+    _create_file_change_pr(
         item_type=item_type,
         filename=filename,
         contents=request_body,
-        is_update=False,
+        change_type=ChangeType.add,
         user=user,
         data_owner=data_owner,
     )
@@ -98,26 +99,25 @@ async def put_item(
 
     request_body = await request.json()
 
-    _create_upload_pr(
+    _create_file_change_pr(
         item_type=item_type,
         filename=filename,
         contents=request_body,
-        is_update=True,
+        change_type=ChangeType.update,
         user=user,
         data_owner=data_owner,
     )
     return Response()
 
 
-def _create_upload_pr(
+def _create_file_change_pr(
     item_type: ItemType,
     filename: str,
-    contents: typing.Any,
-    is_update: bool,
+    change_type: ChangeType,
     user: str,
     data_owner: bool,
+    contents: typing.Any = None,
 ) -> None:
-    change_type = "Update" if is_update else "Add"
     pr_body = PullRequestBody(
         item_type=item_type.value,
         filename=filename,
@@ -129,17 +129,25 @@ def _create_upload_pr(
 
     path_in_repo = _path_in_repo(item_type, filename)
 
-    # serialize as formatted json
-    serialized_content = json.dumps(
-        contents,
-        indent=2,
-    ).encode("utf-8")
+    if change_type != ChangeType.delete:
+        # serialize as formatted json
+        serialized_content = json.dumps(
+            contents,
+            indent=2,
+        ).encode("utf-8")
+
+        file_to_create = (path_in_repo, serialized_content)
+        file_to_delete = None
+    else:
+        file_to_create = None
+        file_to_delete = path_in_repo
 
     create_pull_request(
         branch_base_name=slugify(path_in_repo)[:30],
         pr_title=f"{change_type} {path_in_repo}",
         pr_body=pr_body.serialize(),
-        file_to_create=(path_in_repo, serialized_content),
+        file_to_create=file_to_create,
+        file_to_delete=file_to_delete,
         labels=("OSCDataOwner",) if data_owner else (),
     )
 
@@ -203,17 +211,21 @@ async def get_item(item_id: str):
 
 
 @app.delete("/items/{item_type}/{filename}", status_code=HTTPStatus.NO_CONTENT)
-async def delete_item(item_type: ItemType, filename: str):
+async def delete_item(
+    item_type: ItemType,
+    filename: str,
+    user=Depends(get_user),
+    data_owner=Depends(get_data_owner_role),
+):
     """Delete existing repository item via a PR"""
 
-    path_in_repo = _path_in_repo(item_type=item_type, filename=filename)
+    logger.info(f"Creating PR to delete item {filename}")
 
-    logger.info(f"Creating PR to delete item {path_in_repo}")
-
-    create_pull_request(
-        branch_base_name=slugify(path_in_repo)[:30],
-        pr_title=f"Delete {path_in_repo}",
-        pr_body="",
-        file_to_delete=path_in_repo,
+    _create_file_change_pr(
+        item_type=item_type,
+        filename=filename,
+        change_type=ChangeType.delete,
+        user=user,
+        data_owner=data_owner,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)
