@@ -14,7 +14,6 @@ from open_science_catalog_backend.pull_request import (
     create_pull_request,
     pull_requests,
     PullRequestBody,
-    files_in_directory,
     ChangeType,
 )
 
@@ -56,7 +55,7 @@ def get_data_owner_role(
 
 
 @app.post(
-    "/items/{item_type}/{filename}",
+    "/item-requests/{item_type}/{filename}",
     status_code=HTTPStatus.CREATED,
 )
 async def create_item(
@@ -85,7 +84,7 @@ async def create_item(
     return Response(status_code=HTTPStatus.CREATED)
 
 
-@app.put("/items/{item_type}/{filename}")
+@app.put("/item-requests/{item_type}/{filename}")
 async def put_item(
     request: Request,
     item_type: ItemType,
@@ -154,63 +153,38 @@ def _create_file_change_pr(
 
 class ResponseItem(BaseModel):
     filename: str
-    change_type: typing.Optional[str]  # only PR
-    url: typing.Optional[str]  # only PR
-    data_owner: typing.Optional[bool]  # only PR
+    change_type: ChangeType
+    url: str
+    data_owner: bool
 
 
 class ItemsResponse(BaseModel):
     items: typing.Union[list[ResponseItem], list[str]]
 
 
-class Filtering(str, Enum):
-    pending = "pending"
-    confirmed = "confirmed"
-
-
-@app.get("/items/{item_type}", response_model=ItemsResponse)
-async def get_items(
-    item_type: ItemType, filter: Filtering = Filtering.confirmed, user=Depends(get_user)
-):
+@app.get("/item-requests/{item_type}", response_model=ItemsResponse)
+async def get_items(item_type: ItemType, user=Depends(get_user)):
     """Get list of IDs of items for a certain user/workspace.
 
     Returns submissions in git repo by default (all users), but can also return
     pending submissions for the current user.
     """
 
-    if filter == Filtering.pending:
-        items: typing.Union[list[ResponseItem], list[str]] = [
-            ResponseItem(
-                filename=pr_body.filename,
-                change_type=pr_body.change_type,
-                url=pr_body.url,
-                data_owner=pr_body.data_owner,
-            )
-            for pr_body in pull_requests()
-            if pr_body.item_type == item_type.value and pr_body.user == user
-        ]
-    else:
-        items = [
-            ResponseItem(filename=filename)
-            for filename in files_in_directory(
-                directory=_path_in_repo(item_type=item_type)
-            )
-        ]
+    items = [
+        ResponseItem(
+            filename=pr_body.filename,
+            change_type=pr_body.change_type,
+            url=pr_body.url,
+            data_owner=pr_body.data_owner,
+        )
+        for pr_body in pull_requests()
+        if pr_body.item_type == item_type.value and pr_body.user == user
+    ]
 
     return ItemsResponse(items=items)
 
 
-# TODO: this is not exposed until we figure out if we really need this
-# @app.get("/items/{item_id}")
-async def get_item(item_id: str):
-    """Retrieves STAC item from github repository.
-
-    Does not support fetching pending submissions.
-    """
-    raise NotImplementedError
-
-
-@app.delete("/items/{item_type}/{filename}", status_code=HTTPStatus.NO_CONTENT)
+@app.delete("/item-requests/{item_type}/{filename}", status_code=HTTPStatus.NO_CONTENT)
 async def delete_item(
     item_type: ItemType,
     filename: str,

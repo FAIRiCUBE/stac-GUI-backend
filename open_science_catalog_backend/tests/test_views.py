@@ -47,7 +47,7 @@ def mock_files_in_directory():
 
 def test_post_item_creates_pull_request(client, mock_create_pull_request):
     response = client.post(
-        "/items/products/a.json", json={"test": "foo"}, headers=VALID_HEADERS
+        "/item-requests/products/a.json", json={"test": "foo"}, headers=VALID_HEADERS
     )
 
     mock_create_pull_request.assert_called_once()
@@ -55,21 +55,21 @@ def test_post_item_creates_pull_request(client, mock_create_pull_request):
 
 
 def test_post_item_creates_formats_file(client, mock_create_pull_request):
-    client.post("/items/products/a.json", json={"test": "foo"}, headers=VALID_HEADERS)
+    client.post(
+        "/item-requests/products/a.json", json={"test": "foo"}, headers=VALID_HEADERS
+    )
 
     mock_create_pull_request.assert_called_once()
     assert b"\n" in mock_create_pull_request.mock_calls[0].kwargs["file_to_create"][1]
 
 
 def test_create_item_without_auth_fails(client):
-    response = client.post("/items/products/a.json", json={})
+    response = client.post("/item-requests/products/a.json", json={})
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
 def test_get_items_returns_pending_list_for_user(client, mock_pull_requests):
-    response = client.get(
-        "/items/products", params={"filter": "pending"}, headers=VALID_HEADERS
-    )
+    response = client.get("/item-requests/products", headers=VALID_HEADERS)
     assert response.json()["items"][0] == {
         "filename": "pending_item.json",
         "change_type": "Add",
@@ -78,16 +78,9 @@ def test_get_items_returns_pending_list_for_user(client, mock_pull_requests):
     }
 
 
-def test_get_items_returns_confirmed_list_for_user(client, mock_files_in_directory):
-    response = client.get(
-        "/items/products", params={"filter": "confirmed"}, headers=VALID_HEADERS
-    )
-    assert response.json()["items"][0]["filename"] == "confirmed_item.json"
-
-
 def test_put_item_creates_pull_request(client, mock_create_pull_request):
     response = client.put(
-        "/items/projects/a", json={"test": "update"}, headers=VALID_HEADERS
+        "/item-requests/projects/a", json={"test": "update"}, headers=VALID_HEADERS
     )
 
     mock_create_pull_request.assert_called_once()
@@ -95,7 +88,7 @@ def test_put_item_creates_pull_request(client, mock_create_pull_request):
 
 
 def test_delete_item_creates_pull_request(client, mock_create_pull_request):
-    response = client.delete("/items/products/a.json", headers=VALID_HEADERS)
+    response = client.delete("/item-requests/products/a.json", headers=VALID_HEADERS)
 
     mock_kwargs = mock_create_pull_request.mock_calls[0].kwargs
     assert mock_kwargs["file_to_delete"] == "data/products/a.json"

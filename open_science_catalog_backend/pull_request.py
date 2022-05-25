@@ -61,6 +61,7 @@ def pull_requests() -> typing.Iterable[PullRequestBody]:
             logger.info("Found incompatible PR, ignoring..", exc_info=True)
 
 
+# NOTE: this is currently unused and should be deleted
 def files_in_directory(directory: str) -> typing.List[str]:
     logger.info(f"Fetching tree for {directory}")
     try:
