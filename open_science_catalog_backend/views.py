@@ -11,6 +11,7 @@ from slugify import slugify
 
 from open_science_catalog_backend import app
 from open_science_catalog_backend.pull_request import (
+    PullRequestState,
     create_pull_request,
     pull_requests,
     PullRequestBody,
@@ -124,6 +125,7 @@ def _create_file_change_pr(
         url=None,  # No url, not submitted yet
         user=user,
         data_owner=data_owner,
+        state=PullRequestState.pending,
     )
 
     path_in_repo = _path_in_repo(item_type, filename)
@@ -156,6 +158,7 @@ class ResponseItem(BaseModel):
     change_type: ChangeType
     url: str
     data_owner: bool
+    state: PullRequestState
 
 
 class ItemsResponse(BaseModel):
@@ -176,6 +179,7 @@ async def get_items(item_type: ItemType, user=Depends(get_user)):
             change_type=pr_body.change_type,
             url=pr_body.url,
             data_owner=pr_body.data_owner,
+            state=pr_body.state,
         )
         for pr_body in pull_requests()
         if pr_body.item_type == item_type.value and pr_body.user == user

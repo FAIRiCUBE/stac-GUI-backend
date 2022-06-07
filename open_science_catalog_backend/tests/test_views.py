@@ -4,7 +4,11 @@ from unittest import mock
 
 import pytest
 
-from open_science_catalog_backend.pull_request import ChangeType, PullRequestBody
+from open_science_catalog_backend.pull_request import (
+    ChangeType,
+    PullRequestBody,
+    PullRequestState,
+)
 
 VALID_HEADERS = {
     "X-User": "foo",
@@ -30,6 +34,7 @@ def mock_pull_requests():
                 url="https://example.com",
                 user="foo",
                 data_owner=True,
+                state=PullRequestState.pending,
             ),
         ],
     ) as mocker:
@@ -75,6 +80,7 @@ def test_get_items_returns_pending_list_for_user(client, mock_pull_requests):
         "change_type": "Add",
         "url": "https://example.com",
         "data_owner": True,
+        "state": "Pending",
     }
 
 
@@ -98,4 +104,6 @@ def test_delete_item_creates_pull_request(client, mock_create_pull_request):
 
 def test_pr_bodies_can_be_deserialized():
     serialized_body = '{"filename": "foo.json", "item_type": "projects", "change_type": "Add", "user": "Bernhard", "data_owner": true}'
-    PullRequestBody.deserialize(serialized_body, url="") == 3
+    PullRequestBody.deserialize(
+        serialized_body, url="", state=PullRequestState.pending
+    ) == 3

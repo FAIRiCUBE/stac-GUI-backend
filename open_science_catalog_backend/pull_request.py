@@ -20,6 +20,21 @@ class ChangeType(str, Enum):
     delete = "Delete"
 
 
+class PullRequestState(str, Enum):
+    pending = "Pending"
+    merged = "Merged"
+    rejected = "Rejected"
+
+    @classmethod
+    def from_pull_request(cls, pr):
+        if pr.state == "open":
+            return cls.pending
+        elif pr.merged:
+            return cls.merged
+        else:
+            return cls.rejected
+
+
 def _repo() -> github.Repository.Repository:
     return github.Github(config.GITHUB_TOKEN).get_repo(config.GITHUB_REPO_ID)
 
@@ -29,6 +44,7 @@ class PullRequestBody:
     filename: str
     item_type: str
     change_type: ChangeType
+    state: PullRequestState
     url: typing.Optional[str]
     user: str
     data_owner: bool
@@ -39,11 +55,14 @@ class PullRequestBody:
         return json.dumps(d)
 
     @classmethod
-    def deserialize(cls, data: str, url: str) -> "PullRequestBody":
+    def deserialize(
+        cls, data: str, url: str, state: PullRequestState
+    ) -> "PullRequestBody":
         try:
             return cls(
                 **json.loads(data),
                 url=url,
+                state=state,
             )
         except (json.JSONDecodeError, TypeError) as e:
             raise cls.DeserializeError() from e
@@ -53,9 +72,13 @@ class PullRequestBody:
 
 
 def pull_requests() -> typing.Iterable[PullRequestBody]:
-    for pr in _repo().get_pulls():
+    for pr in _repo().get_pulls(state="all"):
         try:
-            yield PullRequestBody.deserialize(pr.body, url=pr.html_url)
+            yield PullRequestBody.deserialize(
+                pr.body,
+                url=pr.html_url,
+                state=PullRequestState.from_pull_request(pr),
+            )
         except PullRequestBody.DeserializeError:
             # probably manually created PR
             logger.info("Found incompatible PR, ignoring..", exc_info=True)
