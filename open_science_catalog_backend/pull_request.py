@@ -29,7 +29,9 @@ class PullRequestState(str, Enum):
     def from_pull_request(cls, pr):
         if pr.state == "open":
             return cls.pending
-        elif pr.merged:
+        elif pr.merged_at is not None:
+            # NOTE: the `merged` property has to be fetched from the server,
+            #       so we use `merged_at`.
             return cls.merged
         else:
             return cls.rejected
