@@ -73,6 +73,18 @@ def test_create_item_without_auth_fails(client):
     assert response.status_code == HTTPStatus.UNAUTHORIZED
 
 
+def test_get_items_returns_all_items(client, mock_pull_requests):
+    response = client.get("/item-requests", headers=VALID_HEADERS)
+    assert response.json()["items"][0] == {
+        "filename": "pending_item.json",
+        "change_type": "Add",
+        "url": "https://example.com",
+        "data_owner": True,
+        "state": "Pending",
+        "item_type": "products",
+    }
+
+
 def test_get_items_returns_pending_list_for_user(client, mock_pull_requests):
     response = client.get("/item-requests/products", headers=VALID_HEADERS)
     assert response.json()["items"][0] == {
@@ -81,6 +93,7 @@ def test_get_items_returns_pending_list_for_user(client, mock_pull_requests):
         "url": "https://example.com",
         "data_owner": True,
         "state": "Pending",
+        "item_type": "products",
     }
 
 

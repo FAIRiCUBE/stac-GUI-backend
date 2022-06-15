@@ -159,33 +159,52 @@ class ResponseItem(BaseModel):
     url: str
     data_owner: bool
     state: PullRequestState
+    item_type: ItemType
 
 
 class ItemsResponse(BaseModel):
     items: typing.Union[list[ResponseItem], list[str]]
 
 
+@app.get("/item-requests", response_model=ItemsResponse)
+async def get_all_items(user=Depends(get_user)):
+    """Get list of IDs of items for a certain user/workspace."""
+
+    return ItemsResponse(
+        items=_item_requests(
+            user=user,
+        ),
+    )
+
+
 @app.get("/item-requests/{item_type}", response_model=ItemsResponse)
-async def get_items(item_type: ItemType, user=Depends(get_user)):
-    """Get list of IDs of items for a certain user/workspace.
+async def get_items_of_type(item_type: ItemType, user=Depends(get_user)):
+    """Get list of IDs of items for a certain user/workspace."""
+    return ItemsResponse(
+        items=_item_requests(
+            user=user,
+            item_type=item_type,
+        ),
+    )
 
-    Returns submissions in git repo by default (all users), but can also return
-    pending submissions for the current user.
-    """
 
-    items = [
+def _item_requests(
+    user: str,
+    item_type: typing.Optional[ItemType] = None,
+) -> typing.List[ResponseItem]:
+    return [
         ResponseItem(
             filename=pr_body.filename,
             change_type=pr_body.change_type,
             url=pr_body.url,
             data_owner=pr_body.data_owner,
             state=pr_body.state,
+            item_type=pr_body.item_type,
         )
         for pr_body in pull_requests()
-        if pr_body.item_type == item_type.value and pr_body.user == user
+        if (item_type is None or pr_body.item_type == item_type.value)
+        and pr_body.user == user
     ]
-
-    return ItemsResponse(items=items)
 
 
 @app.delete("/item-requests/{item_type}/{filename}", status_code=HTTPStatus.NO_CONTENT)
