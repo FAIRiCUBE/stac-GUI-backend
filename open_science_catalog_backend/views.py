@@ -1,3 +1,4 @@
+import datetime
 from enum import Enum
 import json
 from http import HTTPStatus
@@ -126,6 +127,7 @@ def _create_file_change_pr(
         user=user,
         data_owner=data_owner,
         state=PullRequestState.pending,
+        created_at=None,
     )
 
     path_in_repo = _path_in_repo(item_type, filename)
@@ -200,6 +202,7 @@ def _item_requests(
             data_owner=pr_body.data_owner,
             state=pr_body.state,
             item_type=pr_body.item_type,
+            created_at=typing.cast(datetime.datetime, pr_body.created_at).isoformat(),
         )
         for pr_body in pull_requests()
         if (item_type is None or pr_body.item_type == item_type.value)

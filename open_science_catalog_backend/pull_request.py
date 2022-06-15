@@ -1,4 +1,5 @@
 import dataclasses
+import datetime
 from enum import Enum
 import logging
 import json
@@ -48,6 +49,7 @@ class PullRequestBody:
     change_type: ChangeType
     state: PullRequestState
     url: typing.Optional[str]
+    created_at: typing.Optional[datetime.datetime]
     user: str
     data_owner: bool
 
@@ -58,13 +60,18 @@ class PullRequestBody:
 
     @classmethod
     def deserialize(
-        cls, data: str, url: str, state: PullRequestState
+        cls,
+        data: str,
+        url: str,
+        state: PullRequestState,
+        created_at: datetime.datetime,
     ) -> "PullRequestBody":
         try:
             return cls(
                 **json.loads(data),
                 url=url,
                 state=state,
+                created_at=created_at,
             )
         except (json.JSONDecodeError, TypeError) as e:
             raise cls.DeserializeError() from e
@@ -80,6 +87,7 @@ def pull_requests() -> typing.Iterable[PullRequestBody]:
                 pr.body,
                 url=pr.html_url,
                 state=PullRequestState.from_pull_request(pr),
+                created_at=pr.created_at,
             )
         except PullRequestBody.DeserializeError:
             # probably manually created PR
