@@ -162,6 +162,7 @@ class ResponseItem(BaseModel):
     data_owner: bool
     state: PullRequestState
     item_type: ItemType
+    created_at: str
 
 
 class ItemsResponse(BaseModel):

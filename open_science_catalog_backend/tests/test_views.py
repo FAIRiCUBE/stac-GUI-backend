@@ -84,6 +84,7 @@ def test_get_items_returns_all_items(client, mock_pull_requests):
         "data_owner": True,
         "state": "Pending",
         "item_type": "products",
+        "created_at": "2000-01-01T00:00:00",
     }
 
 
@@ -96,6 +97,7 @@ def test_get_items_returns_pending_list_for_user(client, mock_pull_requests):
         "data_owner": True,
         "state": "Pending",
         "item_type": "products",
+        "created_at": "2000-01-01T00:00:00",
     }
 
 
