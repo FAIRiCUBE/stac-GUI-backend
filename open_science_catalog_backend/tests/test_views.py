@@ -24,21 +24,24 @@ def mock_create_pull_request():
 
 
 @pytest.fixture()
-def mock_pull_requests():
+def pull_request_body():
+    return PullRequestBody(
+        item_type="products",
+        filename="pending_item.json",
+        change_type=ChangeType.add,
+        url="https://example.com",
+        user="foo",
+        data_owner=True,
+        state=PullRequestState.pending,
+        created_at=datetime.datetime(2000, 1, 1),
+    )
+
+
+@pytest.fixture()
+def mock_pull_requests(pull_request_body):
     with mock.patch(
         "open_science_catalog_backend.views.pull_requests",
-        return_value=[
-            PullRequestBody(
-                item_type="products",
-                filename="pending_item.json",
-                change_type=ChangeType.add,
-                url="https://example.com",
-                user="foo",
-                data_owner=True,
-                state=PullRequestState.pending,
-                created_at=datetime.datetime(2000, 1, 1),
-            ),
-        ],
+        return_value=[pull_request_body],
     ) as mocker:
         yield mocker
 
@@ -127,3 +130,13 @@ def test_pr_bodies_can_be_deserialized():
         state=PullRequestState.pending,
         created_at=datetime.datetime(2000, 1, 1),
     ) == 3
+
+
+@pytest.mark.parametrize("dynamic_key", ["url", "state", "created_at"])
+def test_pr_body_serializes_without_dynamic_attributes(
+    pull_request_body: PullRequestBody,
+    dynamic_key: str,
+):
+    serialized = pull_request_body.serialize()
+    raw_data = json.loads(serialized)
+    assert dynamic_key not in raw_data

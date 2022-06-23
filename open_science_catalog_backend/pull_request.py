@@ -53,9 +53,12 @@ class PullRequestBody:
     user: str
     data_owner: bool
 
-    def serialize(self):
-        d = dataclasses.asdict(self)
-        d.pop("url")
+    def serialize(self) -> str:
+        d = {
+            k: v
+            for k, v in dataclasses.asdict(self).items()
+            if k not in ("url", "created_at", "state")
+        }
         return json.dumps(d)
 
     @classmethod
