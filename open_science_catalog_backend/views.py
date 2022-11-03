@@ -6,9 +6,13 @@ from pathlib import PurePath
 import logging
 import typing
 
-from fastapi import Request, Response, Depends, HTTPException, Header
+from fastapi import (
+    Request, Response, Depends, HTTPException, Header, UploadFile
+)
 from pydantic import BaseModel
 from slugify import slugify
+from aiobotocore.session import get_session
+
 
 from open_science_catalog_backend import app
 from open_science_catalog_backend.pull_request import (
@@ -18,6 +22,7 @@ from open_science_catalog_backend.pull_request import (
     PullRequestBody,
     ChangeType,
 )
+from open_science_catalog_backend import config
 
 
 logger = logging.getLogger(__name__)
@@ -230,3 +235,19 @@ async def delete_item(
         data_owner=data_owner,
     )
     return Response(status_code=HTTPStatus.NO_CONTENT)
+
+
+@app.post("/upload/{path}", status_code=HTTPStatus.ACCEPTED)
+async def upload_file(upload_file: UploadFile, path: str):
+    session = get_session()
+    async with session.create_client(
+        's3',
+        endpoint_url=config.OBJECT_STORAGE_ENDPOINT_URL,
+        aws_access_key_id=config.OBJECT_STORAGE_ACCESS_KEY_ID,
+        aws_secret_access_key=config.OBJECT_STORAGE_SECRET_ACCESS_KEY,
+    ) as client:
+        await client.put_object(
+            Bucket="test",
+            Key=path,
+            Body=upload_file.file._file
+        )
