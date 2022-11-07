@@ -12,6 +12,7 @@ from fastapi import (
 from pydantic import BaseModel
 from slugify import slugify
 from aiobotocore.session import get_session
+import botocore
 
 
 from open_science_catalog_backend import app
@@ -237,17 +238,22 @@ async def delete_item(
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
-@app.post("/upload/{path}", status_code=HTTPStatus.ACCEPTED)
+@app.post("/upload/{path:path}", status_code=HTTPStatus.ACCEPTED)
 async def upload_file(upload_file: UploadFile, path: str):
     session = get_session()
+
+    session.unregister(
+        "before-parameter-build.s3",
+        botocore.handlers.validate_bucket_name,
+    )
     async with session.create_client(
         's3',
-        endpoint_url=config.OBJECT_STORAGE_ENDPOINT_URL,
+        endpoint_url="https://s3.waw2-1.cloudferro.com", #config.OBJECT_STORAGE_ENDPOINT_URL,
         aws_access_key_id=config.OBJECT_STORAGE_ACCESS_KEY_ID,
         aws_secret_access_key=config.OBJECT_STORAGE_SECRET_ACCESS_KEY,
     ) as client:
         await client.put_object(
-            Bucket="test",
+            Bucket=config.OBJECT_STORAGE_BUCKET,
             Key=path,
             Body=upload_file.file._file
         )
