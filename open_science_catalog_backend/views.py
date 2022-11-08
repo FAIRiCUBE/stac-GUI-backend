@@ -5,15 +5,16 @@ from http import HTTPStatus
 from pathlib import PurePath
 import logging
 import typing
+from urllib.parse import urljoin
 
 from fastapi import (
     Request, Response, Depends, HTTPException, Header, UploadFile
 )
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from slugify import slugify
 from aiobotocore.session import get_session
 import botocore
-
 
 from open_science_catalog_backend import app
 from open_science_catalog_backend.pull_request import (
@@ -238,8 +239,8 @@ async def delete_item(
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
-@app.post("/upload/{path:path}", status_code=HTTPStatus.ACCEPTED)
-async def upload_file(upload_file: UploadFile, path: str):
+@app.post("/upload/{path:path}", status_code=HTTPStatus.ACCEPTED, response_class=PlainTextResponse)
+async def upload_file(upload_file: UploadFile, path: str) -> str:
     session = get_session()
 
     session.unregister(
@@ -248,7 +249,7 @@ async def upload_file(upload_file: UploadFile, path: str):
     )
     async with session.create_client(
         's3',
-        endpoint_url="https://s3.waw2-1.cloudferro.com", #config.OBJECT_STORAGE_ENDPOINT_URL,
+        endpoint_url=config.OBJECT_STORAGE_ENDPOINT_URL,
         aws_access_key_id=config.OBJECT_STORAGE_ACCESS_KEY_ID,
         aws_secret_access_key=config.OBJECT_STORAGE_SECRET_ACCESS_KEY,
     ) as client:
@@ -257,3 +258,4 @@ async def upload_file(upload_file: UploadFile, path: str):
             Key=path,
             Body=upload_file.file._file
         )
+        return urljoin(config.OBJECT_STORAGE_PUBLIC_URL_BASE, path)
