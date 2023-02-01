@@ -17,3 +17,5 @@ mypy
 black
 ipdb
 types-python-slugify
+types-requests
+requests-mock

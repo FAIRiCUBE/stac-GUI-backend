@@ -46,3 +46,4 @@ async def log_middle(request: Request, call_next):
 
 
 import open_science_catalog_backend.views  # noqa
+import open_science_catalog_backend.processing_proxy_views  # noqa
