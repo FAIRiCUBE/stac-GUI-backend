@@ -72,10 +72,13 @@ def generate_reverse_proxy(
             "allow_redirects": False,
         }
 
-        logger.debug(f"Requested {request.url}")
-        logger.debug(f"Proxying to {proxy_kwargs['url']}")
+        logger.info(f"Requested {request.url}")
+        logger.info(f"Proxying to {proxy_kwargs['url']}")
         response = getattr(requests, request.method.lower())(**proxy_kwargs)
-
+        logger.info(
+            f"Got status {response.status_code} and size {response.headers.get('Content-Length')}"
+        )
+        # NOTE: don't raise for status, but forward errors
         return requests_response_to_fastapi_response(response)
 
     # need to change name to avoid confusion
