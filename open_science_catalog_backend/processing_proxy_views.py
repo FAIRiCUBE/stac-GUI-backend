@@ -1,12 +1,13 @@
+from http import HTTPStatus
 import logging
+from typing import cast
 
-from fastapi import Request
-from fastapi.responses import Response
+from fastapi import Request, Response, HTTPException
 
 import requests
 import requests.exceptions
 
-from open_science_catalog_backend import app
+from open_science_catalog_backend import app, config
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,15 @@ URL_PREFIX = "/processing/{remote_backend}/"
 
 
 def remote_backend_to_url(remote_backend: str) -> str:
-    return "https://www.example.com"
+    mapping = cast(dict, config.REMOTE_PROCESSING_BACKEND_MAPPING)
+
+    try:
+        return mapping[remote_backend]
+    except KeyError:
+        raise HTTPException(
+            status_code=HTTPStatus.BAD_REQUEST,
+            detail=f"Invalid remote backend {remote_backend}",
+        )
 
 
 def requests_response_to_fastapi_response(response):

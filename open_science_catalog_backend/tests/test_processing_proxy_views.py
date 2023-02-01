@@ -1,4 +1,5 @@
 from http import HTTPStatus
+from unittest import mock
 
 import pytest
 import requests_mock
@@ -13,6 +14,15 @@ def requests_mocker():
 @pytest.fixture()
 def remote_backend_url() -> str:
     return "https://www.example.com"
+
+
+@pytest.fixture(autouse=True)
+def mock_remote_backend_config(remote_backend_url):
+    with mock.patch(
+        "open_science_catalog_backend.config.REMOTE_PROCESSING_BACKEND_MAPPING",
+        new={"mailuefterl": remote_backend_url},
+    ):
+        yield
 
 
 @pytest.fixture()
