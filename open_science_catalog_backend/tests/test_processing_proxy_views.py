@@ -2,13 +2,6 @@ from http import HTTPStatus
 from unittest import mock
 
 import pytest
-import requests_mock
-
-
-@pytest.fixture()
-def requests_mocker():
-    with requests_mock.Mocker() as requests_mocker:
-        yield requests_mocker
 
 
 @pytest.fixture()
@@ -26,17 +19,22 @@ def mock_remote_backend_config(remote_backend_url):
 
 
 @pytest.fixture()
-def mock_remote_job_status(requests_mocker, remote_backend_url):
-    requests_mocker.get(f"{remote_backend_url}/jobs/foo-bar", json={"jobID": 1})
+def mock_remote_job_status(requests_mock, remote_backend_url):
+    return requests_mock.get(f"{remote_backend_url}/jobs/foo-bar", json={"jobID": 1})
 
 
 @pytest.fixture()
-def mock_remote_job_results(requests_mocker, remote_backend_url):
-    requests_mocker.get(
+def mock_remote_job_results(requests_mock, remote_backend_url):
+    return requests_mock.get(
         f"{remote_backend_url}/jobs/foo-bar/results",
         content=b"a",
         headers={"Content-Type": "custom/stuff"},
     )
+
+
+def test_forwarded_request_sets_host_header(client, mock_remote_job_status):
+    client.get("/processing/mailuefterl/jobs/foo-bar")
+    assert mock_remote_job_status.last_request.headers["host"] == "www.example.com"
 
 
 def test_job_status_can_be_fetched(client, mock_remote_job_status):

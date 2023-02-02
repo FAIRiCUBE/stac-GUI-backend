@@ -1,6 +1,7 @@
 from http import HTTPStatus
 import logging
 from typing import cast
+from urllib.parse import urlparse
 
 from fastapi import Request, Response, HTTPException
 
@@ -55,14 +56,16 @@ def generate_reverse_proxy(
         remote_backend: str,
         proxy_path: str = "",
     ):
-        headers = dict(request.headers)
-
         url = (
             remote_backend_to_url(remote_backend)
             + "/"
             + service_prefix
             + (f"/{proxy_path}" if proxy_path else "")
         )
+
+        remote_backend_host = cast(str, urlparse(url).hostname)
+
+        headers = dict(request.headers) | {"Host": remote_backend_host}
 
         proxy_kwargs = {
             "url": url,
