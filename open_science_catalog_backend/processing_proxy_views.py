@@ -28,7 +28,7 @@ def remote_backend_to_url(remote_backend: str) -> str:
         )
 
 
-def requests_response_to_fastapi_response(response):
+def requests_response_to_fastapi_response(response) -> Response:
     excluded_headers = [
         "content-encoding",
         "content-length",
@@ -73,11 +73,14 @@ def generate_reverse_proxy(
         }
 
         logger.info(f"Requested {request.url}")
+        logger.info(str(request))
         logger.info(f"Proxying to {proxy_kwargs['url']}")
         response = getattr(requests, request.method.lower())(**proxy_kwargs)
         logger.info(
             f"Got status {response.status_code} and size {response.headers.get('Content-Length')}"
         )
+
+        logger.info(response.content.decode())
         # NOTE: don't raise for status, but forward errors
         return requests_response_to_fastapi_response(response)
 
