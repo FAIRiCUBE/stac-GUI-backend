@@ -82,7 +82,7 @@ def generate_reverse_proxy(
         logger.info(
             f"Got status {response.status_code} and size {response.headers.get('Content-Length')}"
         )
-        logger.info(response.content.decode())
+        logger.info(response.content.decode()[:500])
         # NOTE: don't raise for status, but forward errors
         return requests_response_to_fastapi_response(response)
 
