@@ -80,7 +80,7 @@ def generate_reverse_proxy(
         logger.info(f"Proxying to {proxy_kwargs['url']}")
         response = getattr(requests, request.method.lower())(**proxy_kwargs)
         logger.info(
-            f"Got status {response.status_code} and size {response.headers.get('Content-Length')}"
+            f"Got status {response.status_code} and size {len(response.content)}"
         )
         logger.info(response.content.decode()[:500])
         # NOTE: don't raise for status, but forward errors
