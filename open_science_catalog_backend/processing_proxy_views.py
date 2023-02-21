@@ -168,10 +168,9 @@ async def deploy_process(request: Request, remote_backend: str, process: str) ->
     logger.info("Deploying process")
     async with httpx.AsyncClient() as client:
         url = remote_backend_to_url(remote_backend) + "/processes"
-        remote_backend_host = cast(str, urlparse(url).hostname)
         deploy_response = await client.post(
             url,
-            headers=dict(request.headers) | {"Host": remote_backend_host},
+            headers=request.headers,
             json={
                 "inputs": {
                     "applicationPackage": {
