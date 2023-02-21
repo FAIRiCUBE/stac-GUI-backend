@@ -24,3 +24,7 @@ REMOTE_PROCESSING_BACKEND_MAPPING: dict | None = (
     if (p := os.environ.get("REMOTE_PROCESSING_BACKEND_MAPPING_FILE_PATH"))
     else None
 )
+
+RESOURCE_CATALOG_METADATA_URL: str | None = os.environ.get(
+    "RESOURCE_CATALOG_METADATA_URL"
+)
