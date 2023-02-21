@@ -160,14 +160,14 @@ async def deploy_process(request: Request, remote_backend: str, process: str) ->
         cast(str, config.RESOURCE_CATALOG_METADATA_URL),
         params={"q": process_name, "f": "json"},
     )
-    logger.info(f"Catalog response: {catalog_response.content.decode()[:800]}")
+    logger.info(f"Catalog response: {catalog_response.content.decode()[:1000]}")
 
     feature = catalog_response.json()["features"][0]
     cwl_link = feature["properties"]["associations"][0]["href"]
 
-    logger.info("Deploying process")
     async with httpx.AsyncClient() as client:
         url = remote_backend_to_url(remote_backend) + "/processes"
+        logger.info(f"Deploying process at {url}")
         deploy_response = await client.post(
             url,
             headers=request.headers,
@@ -180,8 +180,8 @@ async def deploy_process(request: Request, remote_backend: str, process: str) ->
                 }
             },
         )
-        deploy_response.raise_for_status()
-    logger.info(f"Process deploy response: {deploy_response.content.decode()[:800]}")
+    logger.info(f"Process deploy response: {deploy_response.content.decode()[:1000]}")
+    deploy_response.raise_for_status()
 
 
 async def _do_download(url, **kwargs):
