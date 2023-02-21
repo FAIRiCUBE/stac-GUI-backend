@@ -36,22 +36,24 @@ def mock_catalog_response_found(respx_mock):
                 {
                     "id": "python-sleeper",
                     "type": "Feature",
-                    "associations": [
-                        {
-                            "href": "https://cwl-server.test",
-                            "name": "Python sleeper",
-                            "description": "Run a Python sleeper for between min and max seconds randomly",
-                            "type": "application/x-yaml",
-                            "rel": "application/x-yaml",
-                        },
-                        {
-                            "href": "https://foo.test",
-                            "name": "Python sleeper",
-                            "description": "Run a Python sleeper for between min and max seconds randomly",
-                            "type": "application/x-yaml",
-                            "rel": "application/x-yaml",
-                        },
-                    ],
+                    "properties": {
+                        "associations": [
+                            {
+                                "href": "https://cwl-server.test",
+                                "name": "Python sleeper",
+                                "description": "Run a Python sleeper for between min and max seconds randomly",
+                                "type": "application/x-yaml",
+                                "rel": "application/x-yaml",
+                            },
+                            {
+                                "href": "https://foo.test",
+                                "name": "Python sleeper",
+                                "description": "Run a Python sleeper for between min and max seconds randomly",
+                                "type": "application/x-yaml",
+                                "rel": "application/x-yaml",
+                            },
+                        ],
+                    },
                 }
             ],
         }

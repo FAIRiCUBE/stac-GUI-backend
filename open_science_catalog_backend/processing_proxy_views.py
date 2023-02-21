@@ -155,14 +155,15 @@ async def deploy_process(request: Request, remote_backend: str, process: str) ->
     # version is not used currently
     # process_version = match.group("version")
 
-    logger.info("Fetching processing catalog")
+    logger.info(f"Fetching catalog from {config.RESOURCE_CATALOG_METADATA_URL}")
     catalog_response = await _do_download(
         cast(str, config.RESOURCE_CATALOG_METADATA_URL),
         params={"q": process_name, "f": "json"},
     )
     logger.info(f"Catalog response: {catalog_response.content.decode()[:800]}")
 
-    cwl_link = catalog_response.json()["features"][0]["associations"][0]["href"]
+    feature = catalog_response.json()["features"][0]
+    cwl_link = feature["properties"]["associations"][0]["href"]
 
     logger.info("Deploying process")
     async with httpx.AsyncClient() as client:
