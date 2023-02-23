@@ -170,7 +170,8 @@ async def deploy_process(request: Request, remote_backend: str, process: str) ->
         logger.info(f"Deploying process at {url}")
         deploy_response = await client.post(
             url,
-            headers=request.headers,
+            # NOTE: only forward auth here
+            headers={"X-User-Id": request.headers["x-user-id"]},
             json={
                 "inputs": {
                     "applicationPackage": {

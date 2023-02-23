@@ -121,7 +121,10 @@ def test_get_process_triggers_deploy(
     mock_process_deploy,
     mock_remote_process_get_not_found,
 ) -> None:
-    response = client.get("/processing/mailuefterl/processes/python-sleeper-0_0_2")
+    response = client.get(
+        "/processing/mailuefterl/processes/python-sleeper-0_0_2",
+        headers={"X-User-ID": "abc"},
+    )
     # this is only not found because the mock backend also returns not found after deploy
     assert response.status_code == HTTPStatus.NOT_FOUND
 
