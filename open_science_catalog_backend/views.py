@@ -204,10 +204,10 @@ def _item_requests(
         ResponseItem(
             filename=pr_body.filename,
             change_type=pr_body.change_type,
-            url=pr_body.url,
+            url=typing.cast(str, pr_body.url),
             data_owner=pr_body.data_owner,
             state=pr_body.state,
-            item_type=pr_body.item_type,
+            item_type=ItemType(pr_body.item_type),
             created_at=typing.cast(datetime.datetime, pr_body.created_at).isoformat(),
         )
         for pr_body in pull_requests()
