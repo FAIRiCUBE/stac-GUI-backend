@@ -31,32 +31,59 @@ def mock_catalog_url():
 def mock_catalog_response_found(respx_mock):
     respx_mock.get("https://catalog.test").respond(
         json={
-            "type": "FeatureCollection",
-            "features": [
-                {
-                    "id": "python-sleeper",
-                    "type": "Feature",
-                    "properties": {
-                        "associations": [
-                            {
-                                "href": "https://cwl-server.test",
-                                "name": "Python sleeper",
-                                "description": "Run a Python sleeper for between min and max seconds randomly",
-                                "type": "application/x-yaml",
-                                "rel": "application/x-yaml",
-                            },
-                            {
-                                "href": "https://foo.test",
-                                "name": "Python sleeper",
-                                "description": "Run a Python sleeper for between min and max seconds randomly",
-                                "type": "application/x-yaml",
-                                "rel": "application/x-yaml",
-                            },
-                        ],
+            "id": "python-sleeper",
+            "type": "Feature",
+            "properties": {
+                "associations": [
+                    {
+                        "href": "https://cwl-server.test",
+                        "name": "Python sleeper",
+                        "description": "Run a Python sleeper for between min and max seconds randomly",
+                        "type": "application/x-yaml",
+                        "rel": "application/x-yaml",
                     },
-                }
-            ],
+                    {
+                        "href": "https://foo.test",
+                        "name": "Python sleeper",
+                        "description": "Run a Python sleeper for between min and max seconds randomly",
+                        "type": "application/x-yaml",
+                        "rel": "application/x-yaml",
+                    },
+                ],
+            },
         }
+    )
+
+
+@pytest.fixture()
+def mock_cwl_server(respx_mock):
+    respx_mock.get("https://cwl-server.test").respond(
+        content="""#!/usr/bin/env cwl-runner
+$graph:
+
+- class: Workflow
+  doc: Run a Python sleeper for between min and max seconds randomly
+  id: python-sleeper
+  inputs:
+    min_sleep_seconds:
+      doc: Min sleeping seconds
+      label: Min sleeping seconds
+      type: string
+    max_sleep_seconds:
+      doc: Max sleeping seconds
+      label: Max sleeping seconds
+      type: string
+    ignored_product:
+      doc: Ignored product
+      label: Product
+      type: Directory
+  label: Python sleeper
+  outputs:
+  - id: sleeper_output
+    type: Directory
+    outputSource:
+    - sleeper/log_output
+    """
     )
 
 
@@ -139,6 +166,11 @@ def test_get_process_doesnt_deploy_again_if_already_deployed(
     assert response.json()["remote-process-get-result"] == 3
 
 
-# TODO: job list
-# TODO: process execution
-# TODO: process list
+def test_get_applications_view_forwards_from_catalog(
+    client,
+    mock_catalog_response_found,
+    mock_cwl_server,
+) -> None:
+    response = client.get("/applications/python-sleeper")
+    assert response.status_code == HTTPStatus.OK
+    response.json()["$graph"][0]["id"] == "python-sleeper"

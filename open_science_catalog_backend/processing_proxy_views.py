@@ -5,10 +5,12 @@ from typing import cast
 from urllib.parse import urlparse
 
 from fastapi import Request, Response, HTTPException
+from fastapi.responses import JSONResponse
 
 import httpx
 import requests
 import requests.exceptions
+import yaml
 
 from open_science_catalog_backend import app, config
 
@@ -162,7 +164,7 @@ async def deploy_process(request: Request, remote_backend: str, process: str) ->
     )
     logger.info(f"Catalog response: {catalog_response.content.decode()[:1000]}")
 
-    feature = catalog_response.json()["features"][0]
+    feature = catalog_response.json()
     cwl_link = feature["properties"]["associations"][0]["href"]
 
     async with httpx.AsyncClient() as client:
@@ -194,3 +196,19 @@ async def _do_download(url, **kwargs):
 
 generate_reverse_proxy(service_prefix="processes")
 generate_reverse_proxy(service_prefix="jobs")
+
+
+@app.get("/applications/{application}")
+async def get_application(application: str):
+    logger.info(f"Fetching catalog from {config.RESOURCE_CATALOG_METADATA_URL}")
+    catalog_response = await _do_download(
+        f"{config.RESOURCE_CATALOG_METADATA_URL}/{application}",
+        params={"f": "json"},
+    )
+
+    cwl_link = catalog_response.json()["properties"]["associations"][0]["href"]
+
+    logger.info(f"Fetching cwl from {cwl_link}")
+    cwl_response = await _do_download(cwl_link)
+
+    return JSONResponse(yaml.safe_load(cwl_response.content))
