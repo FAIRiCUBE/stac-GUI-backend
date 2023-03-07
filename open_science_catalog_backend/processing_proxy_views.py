@@ -1,6 +1,5 @@
 from http import HTTPStatus
 import logging
-import re
 from typing import cast
 from urllib.parse import urlparse
 
@@ -116,56 +115,34 @@ def generate_reverse_proxy(
     )(do_handle_proxy_request)
 
 
-@app.get(URL_PREFIX + "processes/{process}")
-async def get_process_and_deploy(
+@app.post(URL_PREFIX + "processes/{process}/execute")
+async def execute_process(
     request: Request, remote_backend: str, process: str
 ) -> Response:
-    response = await handle_proxy_request(
+    logger.info("Deploying process {process}")
+    # we always need to deploy the process in order to get its ID
+    process_location = await deploy_process(
+        request=request,
+        remote_backend=remote_backend,
+        process=process,
+    )
+
+    logger.info(f"Got remote process location {process_location}")
+
+    process_id = process_location.split("/")[-1]
+
+    logger.info(f"Extracted remote process id {process_id}")
+
+    return await handle_proxy_request(
         request=request,
         remote_backend=remote_backend,
         service_prefix="processes",
-        proxy_path=process,
+        proxy_path=f"{process_id}/execute",
     )
 
-    if response.status_code != HTTPStatus.NOT_FOUND:
-        return response
-    else:
-        # deploy process if it's not there yet
-        await deploy_process(
-            request=request,
-            remote_backend=remote_backend,
-            process=process,
-        )
 
-        return await handle_proxy_request(
-            request=request,
-            remote_backend=remote_backend,
-            service_prefix="processes",
-            proxy_path=process,
-        )
-
-
-async def deploy_process(request: Request, remote_backend: str, process: str) -> None:
-    process_regex = r"(?P<name>.+)-(?P<version>[^-]+)"
-    if not (match := re.fullmatch(process_regex, process)):
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail=f"process does not match {process_regex}",
-        )
-
-    process_name = match.group("name")
-    # version is not used currently
-    # process_version = match.group("version")
-
-    logger.info(f"Fetching catalog from {config.RESOURCE_CATALOG_METADATA_URL}")
-    catalog_response = await _do_download(
-        cast(str, config.RESOURCE_CATALOG_METADATA_URL),
-        params={"q": process_name, "f": "json"},
-    )
-    logger.info(f"Catalog response: {catalog_response.content.decode()[:1000]}")
-
-    feature = catalog_response.json()
-    cwl_link = feature["properties"]["associations"][0]["href"]
+async def deploy_process(request: Request, remote_backend: str, process: str) -> str:
+    cwl_link = await _fetch_cwl_link_from_catalog(process)
 
     async with httpx.AsyncClient() as client:
         url = remote_backend_to_url(remote_backend) + "/processes"
@@ -185,6 +162,7 @@ async def deploy_process(request: Request, remote_backend: str, process: str) ->
         )
     logger.info(f"Process deploy response: {deploy_response.content.decode()[:1000]}")
     deploy_response.raise_for_status()
+    return deploy_response.headers["Location"]
 
 
 async def _do_download(url, **kwargs):
@@ -194,20 +172,23 @@ async def _do_download(url, **kwargs):
     return response
 
 
+async def _fetch_cwl_link_from_catalog(process: str) -> str:
+    logger.info(f"Fetching catalog from {config.RESOURCE_CATALOG_METADATA_URL}")
+    catalog_response = await _do_download(
+        f"{config.RESOURCE_CATALOG_METADATA_URL}/{process}",
+        params={"f": "json"},
+    )
+
+    return catalog_response.json()["properties"]["associations"][0]["href"]
+
+
 generate_reverse_proxy(service_prefix="processes")
 generate_reverse_proxy(service_prefix="jobs")
 
 
 @app.get("/applications/{application}")
 async def get_application(application: str):
-    logger.info(f"Fetching catalog from {config.RESOURCE_CATALOG_METADATA_URL}")
-    catalog_response = await _do_download(
-        f"{config.RESOURCE_CATALOG_METADATA_URL}/{application}",
-        params={"f": "json"},
-    )
-
-    cwl_link = catalog_response.json()["properties"]["associations"][0]["href"]
-
+    cwl_link = await _fetch_cwl_link_from_catalog(application)
     logger.info(f"Fetching cwl from {cwl_link}")
     cwl_response = await _do_download(cwl_link)
 
