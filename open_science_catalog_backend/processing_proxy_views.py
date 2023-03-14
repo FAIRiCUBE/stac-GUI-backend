@@ -115,7 +115,7 @@ def generate_reverse_proxy(
     )(do_handle_proxy_request)
 
 
-@app.post(URL_PREFIX + "processes/{process}/execute")
+@app.post(URL_PREFIX + "processes/{process}/execution")
 async def execute_process(
     request: Request, remote_backend: str, process: str
 ) -> Response:
@@ -137,7 +137,7 @@ async def execute_process(
         request=request,
         remote_backend=remote_backend,
         service_prefix="processes",
-        proxy_path=f"{process_id}/execute",
+        proxy_path=f"{process_id}/execution",
     )
 
 
@@ -178,7 +178,6 @@ async def _fetch_cwl_link_from_catalog(process: str) -> str:
         f"{config.RESOURCE_CATALOG_METADATA_URL}/{process}",
         params={"f": "json"},
     )
-
     return catalog_response.json()["properties"]["associations"][0]["href"]
 
 
@@ -191,5 +190,4 @@ async def get_application(application: str):
     cwl_link = await _fetch_cwl_link_from_catalog(application)
     logger.info(f"Fetching cwl from {cwl_link}")
     cwl_response = await _do_download(cwl_link)
-
     return JSONResponse(yaml.safe_load(cwl_response.content))

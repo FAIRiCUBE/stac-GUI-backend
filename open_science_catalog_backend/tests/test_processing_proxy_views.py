@@ -118,7 +118,7 @@ def mock_remote_process_get_found(requests_mock):
 @pytest.fixture()
 def mock_remote_process_execute(requests_mock):
     return requests_mock.post(
-        "https://remote-backend.test/processes/python-sleeper-0_0_2/execute",
+        "https://remote-backend.test/processes/python-sleeper-0_0_2/execution",
         json={"remote-process-post-result": 5},
     )
 
@@ -150,7 +150,7 @@ def test_execute_process_also_deploys(
     mock_remote_process_execute,
 ) -> None:
     response = client.post(
-        "/processing/mailuefterl/processes/python-sleeper/execute",
+        "/processing/mailuefterl/processes/python-sleeper/execution",
         headers={"X-User-ID": "abc"},
     )
     assert response.status_code == HTTPStatus.OK
