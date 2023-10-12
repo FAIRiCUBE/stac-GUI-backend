@@ -28,24 +28,22 @@ def mock_catalog_response_found(respx_mock):
         json={
             "id": "python-sleeper",
             "type": "Feature",
-            "properties": {
-                "associations": [
-                    {
-                        "href": "https://cwl-server.test",
-                        "name": "Python sleeper",
-                        "description": "Run a Python sleeper for between min and max seconds randomly",
-                        "type": "application/x-yaml",
-                        "rel": "application/x-yaml",
-                    },
-                    {
-                        "href": "https://foo.test",
-                        "name": "Python sleeper",
-                        "description": "Run a Python sleeper for between min and max seconds randomly",
-                        "type": "application/x-yaml",
-                        "rel": "application/x-yaml",
-                    },
-                ],
-            },
+            "links": [
+                {
+                    "description": "Insar closure phase",
+                    "href": "https://cwl-server.test",
+                    "name": "Insar closure phase",
+                    "rel": "manifest",
+                    "type": "application/x-yaml",
+                },
+                {
+                    "description": "Insar closure phase",
+                    "href": "https://example.com",
+                    "name": "Insar closure phase",
+                    "rel": "data",
+                    "type": "application/x-yaml",
+                },
+            ],
         }
     )
 

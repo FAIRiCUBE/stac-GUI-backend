@@ -178,7 +178,10 @@ async def _fetch_cwl_link_from_catalog(process: str) -> str:
         f"{config.RESOURCE_CATALOG_METADATA_URL}/{process}",
         params={"f": "json"},
     )
-    return catalog_response.json()["properties"]["associations"][0]["href"]
+    (link,) = [
+        link for link in catalog_response.json()["links"] if link["rel"] == "manifest"
+    ]
+    return link['href']
 
 
 generate_reverse_proxy(service_prefix="processes")
