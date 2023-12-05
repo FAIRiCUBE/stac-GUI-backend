@@ -7,25 +7,6 @@ services:
         volumes:
         - .:/srv/service
         env_file: test_environment.env
-        environment:
-          GITHUB_TOKEN: "${GITHUB_TOKEN}"
-          GITHUB_REPO_ID: "${GITHUB_REPO_ID}"
-          OBJECT_STORAGE_ENDPOINT_URL: 'http://minio:9000'
-          OBJECT_STORAGE_ACCESS_KEY_ID: admin
-          OBJECT_STORAGE_SECRET_ACCESS_KEY: password
-          REMOTE_PROCESSING_BACKEND_MAPPING_FILE_PATH: "/srv/service/a.json"
 
-        command: uvicorn --reload --host=0.0.0.0 --port 5000 --log-level=info --reload open_science_catalog_backend:app
-    minio:
-        image: minio/minio
-        ports:
-          - "9000:9000"
-          - "9001:9001"
-        volumes:
-          - minio_storage:/data
-        environment:
-          MINIO_ROOT_USER: admin
-          MINIO_ROOT_PASSWORD: password
-        command: server --console-address ":9001" /data
-volumes:
-    minio_storage: {}
+        command: uvicorn --reload --host=0.0.0.0 --port 5000 --log-level=debug --reload fairicube_catalog_backend:app
+

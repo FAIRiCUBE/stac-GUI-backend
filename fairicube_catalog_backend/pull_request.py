@@ -10,7 +10,7 @@ import typing
 import github
 import github.Repository
 
-from open_science_catalog_backend import config
+from fairicube_catalog_backend import config
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +115,7 @@ def create_pull_request(
     pr_body: str,
     file_to_create: typing.Optional[tuple[str, bytes]] = None,
     file_to_delete: typing.Optional[str] = None,
+    file_is_updated: typing.Optional[str] = None,
     labels: typing.Tuple[str, ...] = (),
 ):
     logger.info("Creating pull request")
@@ -124,6 +125,17 @@ def create_pull_request(
     repo = _repo()
 
     branch_name = _create_branch(repo, branch_base_name=branch_base_name)
+    removed_branch_name = None
+
+    if file_is_updated == "edited":
+        pull_list = repo.get_pulls(
+            state="open"
+        )
+        for pull in pull_list:
+            if pull.title == pr_title:
+                removed_branch_name = pull.head.ref
+                pull.edit(state="closed")
+                break
 
     if file_to_create:
         repo.update_file(
@@ -151,6 +163,10 @@ def create_pull_request(
     )
     if labels:
         pr.set_labels(*labels)
+
+        for b in repo.get_branches():
+            if b.name == removed_branch_name:
+                repo.get_git_ref(f"heads/{b.name}").delete()
 
     logger.info("Pull request successfully created")
 

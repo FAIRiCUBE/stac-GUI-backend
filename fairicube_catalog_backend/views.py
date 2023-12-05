@@ -1,3 +1,4 @@
+import os
 import datetime
 from enum import Enum
 import json
@@ -14,28 +15,24 @@ from slugify import slugify
 from aiobotocore.session import get_session
 import botocore
 
-from open_science_catalog_backend import app
-from open_science_catalog_backend.pull_request import (
+from fairicube_catalog_backend import app
+from fairicube_catalog_backend.pull_request import (
     PullRequestState,
     create_pull_request,
     pull_requests,
     PullRequestBody,
     ChangeType,
 )
-from open_science_catalog_backend import config
+from fairicube_catalog_backend import config
 
 
 logger = logging.getLogger(__name__)
 
-PREFIX_IN_REPO = PurePath("data")
+PREFIX_IN_REPO = PurePath("")
 
 
 class ItemType(str, Enum):
-    projects = "projects"
-    products = "products"
-    variables = "variables"
-    themes = "themes"
-
+    products = "stac_dist"
 
 def _path_in_repo(item_type: ItemType, filename: typing.Optional[str] = None) -> str:
     return str(PREFIX_IN_REPO / item_type.value / (filename if filename else ""))
@@ -50,14 +47,14 @@ def get_user(x_user: typing.Optional[str] = Header(default=None)) -> str:
 
 
 def get_data_owner_role(
-    x_oscdataowner: str = Header(default=""),
+    x_FairicubeOwner: str = Header(default=""),
 ) -> bool:
     # NOTE: this header must be secured by another component in the system
     try:
-        return bool(json.loads(x_oscdataowner))
+        return bool(json.loads(x_FairicubeOwner))
     except (ValueError, TypeError):
         raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST, detail="Invalid header X-OSCDataOwner"
+            status_code=HTTPStatus.BAD_REQUEST, detail="Invalid header X-FairicubeOwner"
         )
 
 
@@ -82,7 +79,7 @@ async def create_item(
 
     _create_file_change_pr(
         item_type=item_type,
-        filename=filename,
+        filename=f"{os.path.splitext(filename)[0]}/{filename}",
         contents=request_body,
         change_type=ChangeType.add,
         user=user,
@@ -107,7 +104,7 @@ async def put_item(
 
     _create_file_change_pr(
         item_type=item_type,
-        filename=filename,
+        filename=f"{os.path.splitext(filename)[0]}/{filename}",
         contents=request_body,
         change_type=ChangeType.update,
         user=user,
@@ -134,13 +131,13 @@ def _create_file_change_pr(
         state=PullRequestState.pending,
         created_at=None,
     )
-
+    content = contents["stac"]
     path_in_repo = _path_in_repo(item_type, filename)
 
     if change_type != ChangeType.delete:
         # serialize as formatted json
         serialized_content = json.dumps(
-            contents,
+            content,
             indent=2,
         ).encode("utf-8")
 
@@ -156,7 +153,8 @@ def _create_file_change_pr(
         pr_body=pr_body.serialize(),
         file_to_create=file_to_create,
         file_to_delete=file_to_delete,
-        labels=("OSCDataOwner",) if data_owner else (),
+        file_is_updated=contents["state"],
+        labels=("FairicubeOwner",) if data_owner else (),
     )
 
 
@@ -212,7 +210,7 @@ def _item_requests(
         )
         for pr_body in pull_requests()
         if (item_type is None or pr_body.item_type == item_type.value)
-        and pr_body.user == user
+        # and pr_body.user == user
     ]
 
 
@@ -229,7 +227,7 @@ async def delete_item(
 
     _create_file_change_pr(
         item_type=item_type,
-        filename=filename,
+        filename=f"{os.path.splitext(filename)[0]}/{filename}",
         change_type=ChangeType.delete,
         user=user,
         data_owner=data_owner,

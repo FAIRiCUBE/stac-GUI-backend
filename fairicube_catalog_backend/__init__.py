@@ -3,11 +3,18 @@ import time
 
 from fastapi import FastAPI, Request
 from starlette_exporter import PrometheusMiddleware, handle_metrics
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI(title="Open Science Catalog")
+app = FastAPI(title="FAIRiCube Catalog")
 
 
 app.add_middleware(PrometheusMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_headers=["*"],
+    allow_methods=["*"]
+)
 app.add_route("/metrics", handle_metrics)
 
 if __name__ != "__main__":
@@ -45,5 +52,4 @@ async def log_middle(request: Request, call_next):
     return response
 
 
-import open_science_catalog_backend.views  # noqa
-import open_science_catalog_backend.processing_proxy_views  # noqa
+import fairicube_catalog_backend.views  # noqa
