@@ -1,6 +1,6 @@
 version: "3.7"
 services:
-    open-science-catalog-backend:
+    fairicube-catalog-backend:
         build: .
         ports:
         - 5000:5000

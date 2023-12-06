@@ -1,1 +1,1 @@
-# open-science-catalog-backend
+# fairicube-catalog-backend
