@@ -9,8 +9,11 @@ WORKDIR /srv/service
 ADD requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-ADD . .
+ADD . /srv/service
 
 USER www-data
 
-CMD ["gunicorn", "--bind=0.0.0.0:8080", "--config", "gunicorn.conf.py", "--workers=3", "-k", "uvicorn.workers.UvicornWorker", "--log-level=INFO", "fairicube_catalog_backend:app"]
+
+CMD ["uvicorn", "--reload", "--host=0.0.0.0", "--port", "5000", "--log-level=debug", "--reload", "fairicube_catalog_backend:app"]
+
+EXPOSE 5000
