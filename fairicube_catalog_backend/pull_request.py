@@ -124,25 +124,27 @@ def create_pull_request(
 
     repo = _repo()
 
-    branch_name = _create_branch(repo, branch_base_name=branch_base_name)
-    removed_branch_name = None
 
     if file_is_updated == "edited":
         pull_list = repo.get_pulls(
             state="open"
         )
         for pull in pull_list:
-            if pull.title == pr_title:
-                removed_branch_name = pull.head.ref
-                pull.edit(state="closed")
+            if json.loads(pr_body)["filename"] == json.loads(pull.body)["filename"]:
+                branch_name = pull.head.ref
+                sha = repo.get_contents(file_to_create[0], ref=branch_name).sha
                 break
+
+    else:
+        branch_name = _create_branch(repo, branch_base_name=branch_base_name)
+        sha =_previous_version_sha(repo, path=file_to_create[0])
 
     if file_to_create:
         repo.update_file(
             path=file_to_create[0],
             message=f"Add {file_to_create[0]} for pull request submission",
             content=file_to_create[1],
-            sha=_previous_version_sha(repo, path=file_to_create[0]),
+            sha=sha,
             branch=branch_name,
         )
 
@@ -150,23 +152,21 @@ def create_pull_request(
         repo.delete_file(
             path=file_to_delete,
             message=f"Delete {file_to_delete} for pull request submission",
-            sha=_previous_version_sha(repo, path=file_to_delete),
+            sha=sha,
             branch=branch_name,
         )
 
-    pr = repo.create_pull(
-        title=pr_title,
-        body=pr_body,
-        head=branch_name,
-        base=config.GITHUB_MAIN_BRANCH,
-        maintainer_can_modify=True,
-    )
-    if labels:
-        pr.set_labels(*labels)
+    if file_is_updated != "edited":
+        pr = repo.create_pull(
+            title=pr_title,
+            body=pr_body,
+            head=branch_name,
+            base=config.GITHUB_MAIN_BRANCH,
+            maintainer_can_modify=True,
+        )
+        if labels:
+            pr.set_labels(*labels)
 
-        for b in repo.get_branches():
-            if b.name == removed_branch_name:
-                repo.get_git_ref(f"heads/{b.name}").delete()
 
     logger.info("Pull request successfully created")
 
