@@ -19,6 +19,7 @@ from fairicube_catalog_backend import app
 from fairicube_catalog_backend.pull_request import (
     PullRequestState,
     create_pull_request,
+    fetch_items,
     pull_requests,
     PullRequestBody,
     ChangeType,
@@ -167,10 +168,20 @@ class ResponseItem(BaseModel):
     item_type: ItemType
     created_at: str
 
+class PullRequestLink(BaseModel):
+    url:str
 
 class ItemsResponse(BaseModel):
-    items: typing.Union[list[ResponseItem], list[str]]
+    items: typing.Union[list[ResponseItem], list[object]]
 
+
+@app.get("/item-requests/items", response_model=ItemsResponse)
+async def get_all_items(user=Depends(get_user)):
+    """Get list of IDs of items for a certain user/workspace."""
+
+    return ItemsResponse(
+        items=fetch_items(),
+    )
 
 @app.get("/item-requests", response_model=ItemsResponse)
 async def get_all_items(user=Depends(get_user)):

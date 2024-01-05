@@ -1,4 +1,5 @@
 import dataclasses
+import requests
 import datetime
 from enum import Enum
 import logging
@@ -96,6 +97,45 @@ def pull_requests() -> typing.Iterable[PullRequestBody]:
             # probably manually created PR
             logger.info("Found incompatible PR, ignoring..", exc_info=True)
 
+def branch_items():
+    filename_list = []
+    file_href_list = []
+    repo = _repo()
+    branches = repo.get_branches()
+    for branch in branches:
+        if branch.name != config.GITHUB_MAIN_BRANCH:
+            comparison = repo.compare(config.GITHUB_MAIN_BRANCH, branch.name)
+            if len(comparison.files) > 0 and comparison.files[0].filename.startswith('stac_dist'):
+                filename = comparison.files[0].filename[10:]
+                filename_list.append(filename)
+                file_href_list.append(f"https://raw.githubusercontent.com/{config.GITHUB_REPO_ID}/{branch.name}/stac_dist/{filename}")
+
+    main_items = get_items_from_catalog(config.GITHUB_MAIN_BRANCH, "catalog.json", filename_list, file_href_list)
+
+    return(main_items)
+
+
+def get_items_from_catalog(
+        branch,
+        file_name,
+        branch_list,
+        items_links
+        ):
+
+    catalog = requests.get(f"https://raw.githubusercontent.com/{config.GITHUB_REPO_ID}/{branch}/stac_dist/{file_name}",
+                           {'Accept': 'application/json'})
+    for link in catalog.json()["links"]:
+        if (link["rel"] == "item" and link["href"][2:] not in branch_list):
+            items_links.append(f"https://raw.githubusercontent.com/{config.GITHUB_REPO_ID}/{branch}/stac_dist/{link['href'][2:]}")
+    return items_links
+
+def fetch_items():
+    edit_list = []
+    stac_items = branch_items()
+    for item in stac_items:
+        stac_json = requests.get(item, {'Accept': 'application/json'})
+        edit_list.append(stac_json.json())
+    return edit_list
 
 # NOTE: this is currently unused and should be deleted
 def files_in_directory(directory: str) -> typing.List[str]:
