@@ -42,7 +42,9 @@ class PullRequestState(str, Enum):
 def _repo() -> github.Repository.Repository:
     return github.Github(config.GITHUB_TOKEN).get_repo(config.GITHUB_REPO_ID)
 
-
+def _get_headers():
+    return {'Accept': 'application/json',
+               'Authorization': f'token {config.GITHUB_TOKEN}'}
 @dataclasses.dataclass(frozen=True)
 class PullRequestBody:
     filename: str
@@ -123,7 +125,8 @@ def get_items_from_catalog(
         ):
 
     catalog = requests.get(f"https://raw.githubusercontent.com/{config.GITHUB_REPO_ID}/{branch}/stac_dist/{file_name}",
-                           {'Accept': 'application/json'})
+                           headers=_get_headers()
+                           )
     for link in catalog.json()["links"]:
         if (link["rel"] == "item" and link["href"][2:] not in branch_list):
             items_links.append(f"https://raw.githubusercontent.com/{config.GITHUB_REPO_ID}/{branch}/stac_dist/{link['href'][2:]}")
@@ -133,7 +136,7 @@ def fetch_items():
     edit_list = []
     stac_items = branch_items()
     for item in stac_items:
-        stac_json = requests.get(item, {'Accept': 'application/json'})
+        stac_json = requests.get(item, headers=_get_headers())
         edit_list.append(stac_json.json())
     return edit_list
 
