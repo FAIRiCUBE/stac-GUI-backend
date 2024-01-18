@@ -21,6 +21,7 @@ from fairicube_catalog_backend.pull_request import (
     create_pull_request,
     fetch_items,
     pull_requests,
+    get_item,
     PullRequestBody,
     ChangeType,
 )
@@ -60,33 +61,21 @@ def get_data_owner_role(
 
 
 @app.post(
-    "/item-requests/{item_type}/{filename}",
-    status_code=HTTPStatus.CREATED,
+    "/item-requests/{item_name}",
+    status_code=HTTPStatus.OK,
 )
-async def create_item(
+async def fetch_item(
     request: Request,
-    item_type: ItemType,
-    filename: str,
     user=Depends(get_user),
     data_owner=Depends(get_data_owner_role),
 ):
-    """Publish request body (stac file) to file in github repo via PR"""
-
-    logger.info(f"Creating PR to create item {filename}")
 
     request_body = await request.json()
 
-    # NOTE: if this file already exists, this will lead to an override
 
-    _create_file_change_pr(
-        item_type=item_type,
-        filename=f"{os.path.splitext(filename)[0]}/{filename}",
-        contents=request_body,
-        change_type=ChangeType.add,
-        user=user,
-        data_owner=data_owner,
+    return ResponseSingleItem(
+        stac=get_item(request_body["item"]),
     )
-    return Response(status_code=HTTPStatus.CREATED)
 
 
 @app.put("/item-requests/{item_type}/{filename}")
@@ -167,6 +156,9 @@ class ResponseItem(BaseModel):
     state: PullRequestState
     item_type: ItemType
     created_at: str
+
+class ResponseSingleItem(BaseModel):
+    stac: object
 
 class PullRequestLink(BaseModel):
     url:str
