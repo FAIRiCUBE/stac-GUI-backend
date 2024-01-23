@@ -100,7 +100,7 @@ def pull_requests() -> typing.Iterable[PullRequestBody]:
             # probably manually created PR
             logger.info("Found incompatible PR, ignoring..", exc_info=True)
 
-def branch_items():
+def branch_items(pulls_object):
     filename_list = []
     file_href_list = []
     repo = _repo()
@@ -113,12 +113,13 @@ def branch_items():
                 filename_list.append(filename)
                 file_href_list.append({
                     "name": re.search(r"(?<=/)(.*)(?=.json)", filename).group(1),
-                    "path": f"{config.GITHUB_REPO_ID}/{branch.name}/stac_dist/{filename}"
+                    "path": f"{config.GITHUB_REPO_ID}/{branch.name}/stac_dist/{filename}",
+                    "pull": pulls_object[branch.name]
                 })
 
-    main_items = get_items_from_catalog(config.GITHUB_MAIN_BRANCH, "catalog.json", filename_list, file_href_list)
+    # main_items = get_items_from_catalog(config.GITHUB_MAIN_BRANCH, "catalog.json", filename_list, file_href_list)
 
-    return(main_items)
+    return(file_href_list)
 
 
 def get_items_from_catalog(
@@ -141,14 +142,24 @@ def get_items_from_catalog(
 
 def fetch_items():
     edit_list = []
-    stac_items = branch_items()
+    pulls = {}
+    pull_list = _repo().get_pulls(
+            state="open"
+        )
+    for pull in pull_list:
+        branch_name = pull.head.ref
+        html_url = pull.html_url
+        pulls[branch_name] = html_url
+
+    stac_items = branch_items(pulls)
     for item in stac_items:
         edit_list.append(item)
     return edit_list
 
 def get_item(body):
     stac_item = requests.get(f"https://raw.githubusercontent.com/{body['path']}", headers=_get_headers())
-    return stac_item.json()
+    stac_json = stac_item.json()
+    return stac_json
 
 # NOTE: this is currently unused and should be deleted
 def files_in_directory(directory: str) -> typing.List[str]:
