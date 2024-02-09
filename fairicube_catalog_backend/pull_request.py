@@ -43,6 +43,9 @@ class PullRequestState(str, Enum):
 def _repo() -> github.Repository.Repository:
     return github.Github(config.GITHUB_TOKEN).get_repo(config.GITHUB_REPO_ID)
 
+def _org() -> github.Organization.Organization:
+    return github.Github(config.GITHUB_TOKEN).get_organization(config.GITHUB_ORGANIZATION)
+
 def _get_headers():
     return {'Accept': 'application/json',
                'Authorization': f'token {config.GITHUB_TOKEN}'}
@@ -114,7 +117,8 @@ def branch_items(pulls_object):
                 file_href_list.append({
                     "name": re.search(r"(?<=/)(.*)(?=.json)", filename).group(1),
                     "path": f"{config.GITHUB_REPO_ID}/{branch.name}/stac_dist/{filename}",
-                    "pull": pulls_object[branch.name]
+                    "pull": pulls_object[branch.name],
+                    "assignees": pulls_object[f"{branch.name}_assignees"]
                 })
 
     # main_items = get_items_from_catalog(config.GITHUB_MAIN_BRANCH, "catalog.json", filename_list, file_href_list)
@@ -150,11 +154,24 @@ def fetch_items():
         branch_name = pull.head.ref
         html_url = pull.html_url
         pulls[branch_name] = html_url
+        pulls[f"{branch_name}_assignees"] = [assignee.login for assignee in pull.assignees]
 
     stac_items = branch_items(pulls)
     for item in stac_items:
         edit_list.append(item)
     return edit_list
+
+
+def get_members():
+    org = _org()
+    member_list = list()
+    members = org.get_members()
+    for member in members:
+        member_list.append({
+            "label": member.name if member.name != None else member.login,
+            "value":member.login
+        })
+    return member_list
 
 def get_item(body):
     stac_item = requests.get(f"https://raw.githubusercontent.com/{body['path']}", headers=_get_headers())
@@ -181,14 +198,17 @@ def create_pull_request(
     file_to_delete: typing.Optional[str] = None,
     file_is_updated: typing.Optional[str] = None,
     labels: typing.Tuple[str, ...] = (),
+    assignees: typing.Optional[list[str]] =None,
+    reviewers: typing.Optional[list[str]] =None,
 ):
     logger.info("Creating pull request")
     logger.info(f"File to create: {file_to_create[0] if file_to_create else None}")
     logger.info(f"File to delete: {file_to_delete}")
 
     repo = _repo()
-
-
+    assignee_list = []
+    for assignee in assignees:
+        assignee_list.append(github.Github(config.GITHUB_TOKEN).get_user(assignee))
     if file_is_updated == "edited":
         pull_list = repo.get_pulls(
             state="open"
@@ -197,6 +217,9 @@ def create_pull_request(
             if json.loads(pr_body)["filename"] == json.loads(pull.body)["filename"]:
                 branch_name = pull.head.ref
                 sha = repo.get_contents(file_to_create[0], ref=branch_name).sha
+                for assignee in assignee_list:
+                    pull.add_to_assignees(assignee)
+                pull.create_review_request(reviewers)
                 break
 
     else:
@@ -230,6 +253,9 @@ def create_pull_request(
         )
         if labels:
             pr.set_labels(*labels)
+        for assignee in assignee_list:
+                pull.add_to_assignees(assignee)
+        pull.create_review_request(reviewers)
 
 
     logger.info("Pull request successfully created")

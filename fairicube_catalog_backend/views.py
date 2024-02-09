@@ -22,6 +22,7 @@ from fairicube_catalog_backend.pull_request import (
     fetch_items,
     pull_requests,
     get_item,
+    get_members,
     PullRequestBody,
     ChangeType,
 )
@@ -122,6 +123,8 @@ def _create_file_change_pr(
         created_at=None,
     )
     content = contents["stac"]
+    assignees = contents["assignees"]
+    reviewers = contents["reviewers"]
     path_in_repo = _path_in_repo(item_type, filename)
 
     if change_type != ChangeType.delete:
@@ -145,6 +148,8 @@ def _create_file_change_pr(
         file_to_delete=file_to_delete,
         file_is_updated=contents["state"],
         labels=("FairicubeOwner",) if data_owner else (),
+        assignees=assignees,
+        reviewers=reviewers,
     )
 
 
@@ -165,6 +170,7 @@ class PullRequestLink(BaseModel):
 
 class ItemsResponse(BaseModel):
     items: typing.Union[list[ResponseItem], list[object]]
+    members: typing.Union[list[ResponseItem], list[object]]
 
 
 @app.get("/item-requests/items", response_model=ItemsResponse)
@@ -173,6 +179,7 @@ async def get_all_items(user=Depends(get_user)):
 
     return ItemsResponse(
         items=fetch_items(),
+        members=get_members()
     )
 
 @app.get("/item-requests", response_model=ItemsResponse)
