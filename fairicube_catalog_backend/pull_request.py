@@ -208,7 +208,8 @@ def create_pull_request(
     repo = _repo()
     assignee_list = []
     for assignee in assignees:
-        assignee_list.append(github.Github(config.GITHUB_TOKEN).get_user(assignee))
+        if isinstance(assignees, str) == "string":
+            assignee_list.append(github.Github(config.GITHUB_TOKEN).get_user(assignee))
     if file_is_updated == "edited":
         pull_list = repo.get_pulls(
             state="open"
@@ -254,8 +255,8 @@ def create_pull_request(
         if labels:
             pr.set_labels(*labels)
         for assignee in assignee_list:
-                pull.add_to_assignees(assignee)
-        pull.create_review_request(reviewers)
+            pr.add_to_assignees(assignee)
+        pr.create_review_request(reviewers)
 
 
     logger.info("Pull request successfully created")
