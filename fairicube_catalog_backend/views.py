@@ -12,8 +12,7 @@ from fastapi import Request, Response, Depends, HTTPException, Header, UploadFil
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 from slugify import slugify
-from aiobotocore.session import get_session
-import botocore
+
 
 from fairicube_catalog_backend import app
 from fairicube_catalog_backend.pull_request import (
@@ -245,27 +244,3 @@ async def delete_item(
     return Response(status_code=HTTPStatus.NO_CONTENT)
 
 
-@app.post(
-    "/upload/{path:path}",
-    status_code=HTTPStatus.ACCEPTED,
-    response_class=PlainTextResponse,
-)
-async def upload_file(upload_file: UploadFile, path: str) -> str:
-    session = get_session()
-
-    session.unregister(
-        "before-parameter-build.s3",
-        botocore.handlers.validate_bucket_name,
-    )
-    async with session.create_client(
-        "s3",
-        endpoint_url=config.OBJECT_STORAGE_ENDPOINT_URL,
-        aws_access_key_id=config.OBJECT_STORAGE_ACCESS_KEY_ID,
-        aws_secret_access_key=config.OBJECT_STORAGE_SECRET_ACCESS_KEY,
-    ) as client:
-        await client.put_object(
-            Bucket=config.OBJECT_STORAGE_BUCKET,
-            Key=path,
-            Body=upload_file.file._file,  # type: ignore
-        )
-        return urljoin(typing.cast(str, config.OBJECT_STORAGE_PUBLIC_URL_BASE), path)

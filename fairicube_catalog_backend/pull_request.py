@@ -111,12 +111,12 @@ def branch_items(pulls_object):
     for branch in branches:
         if branch.name != config.GITHUB_MAIN_BRANCH:
             comparison = repo.compare(config.GITHUB_MAIN_BRANCH, branch.name)
-            if len(comparison.files) > 0 and comparison.files[0].filename.startswith('stac_dist'):
+            if len(comparison.files) == 1 and comparison.files[0].filename.startswith('stac_dist'):
                 filename = comparison.files[0].filename[10:]
                 filename_list.append(filename)
                 file_href_list.append({
                     "name": re.search(r"(?<=/)(.*)(?=.json)", filename).group(1),
-                    "path": f"{config.GITHUB_REPO_ID}/{branch.name}/stac_dist/{filename}",
+                    "path": comparison.files[0].raw_url,
                     "pull": pulls_object[branch.name],
                     "assignees": pulls_object[f"{branch.name}_assignees"]
                 })
@@ -174,7 +174,7 @@ def get_members():
     return member_list
 
 def get_item(body):
-    stac_item = requests.get(f"https://raw.githubusercontent.com/{body['path']}", headers=_get_headers())
+    stac_item = requests.get(body['path'], headers=_get_headers())
     stac_json = stac_item.json()
     return stac_json
 
