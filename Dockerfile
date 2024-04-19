@@ -14,6 +14,6 @@ ADD . /srv/service
 USER www-data
 
 
-CMD ["uvicorn", "--reload", "--host=0.0.0.0", "--port", "5000", "--log-level=debug", "--reload", "fairicube_catalog_backend:app"]
+CMD ["uvicorn", "--host=0.0.0.0", "--port", "5000", "--log-level=debug", "fairicube_catalog_backend:app", "--workers", "5"]
 
 EXPOSE 5000
