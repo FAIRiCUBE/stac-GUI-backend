@@ -189,6 +189,12 @@ def files_in_directory(directory: str) -> typing.List[str]:
     else:
         return [PurePath(node.path).name for node in git_tree.tree]
 
+def is_valid(json_string: str) -> bool:
+    try:
+        json.loads(json_string)
+        return True
+    except ValueError:
+        return False
 
 def create_pull_request(
     branch_base_name: str,
@@ -215,13 +221,14 @@ def create_pull_request(
             state="open"
         )
         for pull in pull_list:
-            if json.loads(pr_body)["filename"] == json.loads(pull.body)["filename"]:
-                branch_name = pull.head.ref
-                sha = repo.get_contents(file_to_create[0], ref=branch_name).sha
-                for assignee in assignee_list:
-                    pull.add_to_assignees(assignee)
-                pull.create_review_request(reviewers)
-                break
+            if is_valid(pull.body):
+                if json.loads(pr_body)["filename"] == json.loads(pull.body)["filename"]:
+                    branch_name = pull.head.ref
+                    sha = repo.get_contents(file_to_create[0], ref=branch_name).sha
+                    for assignee in assignee_list:
+                        pull.add_to_assignees(assignee)
+                    pull.create_review_request(reviewers)
+                    break
 
     else:
         branch_name = _create_branch(repo, branch_base_name=branch_base_name)
