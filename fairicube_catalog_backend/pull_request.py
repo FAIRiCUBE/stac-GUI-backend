@@ -193,7 +193,7 @@ def is_valid(pull: github.PullRequest.PullRequest) -> bool:
     try:
         json.loads(pull.body)
         return True
-    except ValueError:
+    except (ValueError, TypeError):
         pull.get_files()[0].filename.split('stac_dist/')[1]
         return True
     except Exception:
