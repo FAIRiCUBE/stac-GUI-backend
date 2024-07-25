@@ -217,7 +217,7 @@ def create_pull_request(
     repo = _repo()
     assignee_list = []
     for assignee in assignees:
-        if isinstance(assignees, str) == "string":
+        if isinstance(assignee, str):
             assignee_list.append(github.Github(config.GITHUB_TOKEN).get_user(assignee))
     if file_is_updated == "edited":
         pull_list = repo.get_pulls(
