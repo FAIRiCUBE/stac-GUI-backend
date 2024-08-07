@@ -19,9 +19,9 @@ from fairicube_catalog_backend.pull_request import (
     PullRequestState,
     create_pull_request,
     fetch_items,
-    pull_requests,
     get_item,
     get_members,
+    get_item_url,
     PullRequestBody,
     ChangeType,
 )
@@ -71,10 +71,10 @@ async def fetch_item(
 ):
 
     request_body = await request.json()
-
+    stac_url = get_item_url(request_body)
 
     return ResponseSingleItem(
-        stac=get_item(request_body["item"]),
+        stac=get_item(stac_url),
     )
 
 
@@ -175,52 +175,10 @@ class ItemsResponse(BaseModel):
 @app.get("/item-requests/items", response_model=ItemsResponse)
 async def get_all_items(user=Depends(get_user)):
     """Get list of IDs of items for a certain user/workspace."""
-
     return ItemsResponse(
         items=fetch_items(),
         members=get_members()
     )
-
-@app.get("/item-requests", response_model=ItemsResponse)
-async def get_all_items(user=Depends(get_user)):
-    """Get list of IDs of items for a certain user/workspace."""
-
-    return ItemsResponse(
-        items=_item_requests(
-            user=user,
-        ),
-    )
-
-
-@app.get("/item-requests/{item_type}", response_model=ItemsResponse)
-async def get_items_of_type(item_type: ItemType, user=Depends(get_user)):
-    """Get list of IDs of items for a certain user/workspace."""
-    return ItemsResponse(
-        items=_item_requests(
-            user=user,
-            item_type=item_type,
-        ),
-    )
-
-
-def _item_requests(
-    user: str,
-    item_type: typing.Optional[ItemType] = None,
-) -> typing.List[ResponseItem]:
-    return [
-        ResponseItem(
-            filename=pr_body.filename,
-            change_type=pr_body.change_type,
-            url=typing.cast(str, pr_body.url),
-            data_owner=pr_body.data_owner,
-            state=pr_body.state,
-            item_type=ItemType(pr_body.item_type),
-            created_at=typing.cast(datetime.datetime, pr_body.created_at).isoformat(),
-        )
-        for pr_body in pull_requests()
-        if (item_type is None or pr_body.item_type == item_type.value)
-        # and pr_body.user == user
-    ]
 
 
 @app.delete("/item-requests/{item_type}/{filename}", status_code=HTTPStatus.NO_CONTENT)
