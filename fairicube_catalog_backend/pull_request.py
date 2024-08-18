@@ -103,27 +103,6 @@ def pull_requests() -> typing.Iterable[PullRequestBody]:
             # probably manually created PR
             logger.info("Found incompatible PR, ignoring..", exc_info=True)
 
-def branch_items(pulls_object):
-    filename_list = []
-    file_href_list = []
-    repo = _repo()
-    branches = repo.get_branches()
-    for branch in branches:
-        if branch.name != config.GITHUB_MAIN_BRANCH:
-            comparison = repo.compare(config.GITHUB_MAIN_BRANCH, branch.name)
-            if len(comparison.files) == 1 and comparison.files[0].filename.startswith('stac_dist'):
-                filename = comparison.files[0].filename[10:]
-                filename_list.append(filename)
-                file_href_list.append({
-                    "name": re.search(r"(?<=/)(.*)(?=.json)", filename).group(1),
-                    "path": comparison.files[0].raw_url,
-                    "pull": pulls_object[branch.name],
-                    "assignees": pulls_object[f"{branch.name}_assignees"]
-                })
-
-    # main_items = get_items_from_catalog(config.GITHUB_MAIN_BRANCH, "catalog.json", filename_list, file_href_list)
-
-    return(file_href_list)
 
 
 def get_items_from_catalog(
@@ -144,8 +123,20 @@ def get_items_from_catalog(
                 })
     return items_links
 
+
+def get_item_url(body):
+    pull_id = body["item"]
+    pull = _repo().get_pull(pull_id["path"])
+
+    files = pull.get_files()
+    first_item = files._fetchNextPage()
+    if files.totalCount > 1:
+        first_item = files.reversed._fetchNextPage()
+    return first_item[0].raw_url
+
 def fetch_items():
     edit_list = []
+    file_href_list = []
     pulls = {}
     pull_list = _repo().get_pulls(
             state="open"
@@ -156,7 +147,14 @@ def fetch_items():
         pulls[branch_name] = html_url
         pulls[f"{branch_name}_assignees"] = [assignee.login for assignee in pull.assignees]
 
-    stac_items = branch_items(pulls)
+        file_href_list.append({
+                    "name": re.search(r"([^\/]+?)(\.[^.]*$|$)", pull.title).group(1),
+                    "path":pull.number,
+                    "pull":pulls[branch_name],
+                    "assignees": pulls[f"{branch_name}_assignees"]
+                })
+
+    stac_items = file_href_list
     for item in stac_items:
         edit_list.append(item)
     return edit_list
@@ -173,8 +171,8 @@ def get_members():
         })
     return member_list
 
-def get_item(body):
-    stac_item = requests.get(body['path'], headers=_get_headers())
+def get_item(path):
+    stac_item = requests.get(path, headers=_get_headers())
     stac_json = stac_item.json()
     return stac_json
 
